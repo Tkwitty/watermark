@@ -1,0 +1,116 @@
+# coding=utf8
+import numpy as np
+import tensorflow as tf
+from PIL import Image
+import time
+from lgr import loadDataset, load_logoDataset
+
+def getTimeVersion():
+    stime = time.strftime('%H%M', time.localtime(time.time()))
+    return stime
+
+def tensor_test():
+    v = tf.truncated_normal([10, 10], mean=0.5, stddev=0.25)
+    sess = tf.Session()
+    print(sess.run(v))
+    sess.close()
+
+def train_logo():
+    # 准备一波样本，x为带水印的mat，y为不带水印的mat
+    dpath = "nologo"  # 数据集 dir
+    # xs, ys = loadDataset(dpath)  # 从图片dir加载数据集
+    xs, ys = load_logoDataset(dpath, (373, 54))  # 从图片dir加载数据集
+    print(np.shape(xs), np.shape(ys))
+
+    X = tf.placeholder(tf.float32, name='X')
+    Y = tf.placeholder(tf.float32, name='Y')
+
+    # val_rgb = np.ones((54, 373, 3)) * 0.5
+    # val_a = np.zeros((54, 373)) * 0.5
+    # W_rgb = tf.Variable(tf.constant_initializer(val_rgb), name='weight_rgb')
+    # W_a = tf.Variable(tf.constant_initializer(val_a), name='weight_a')
+
+    # W_rgb = tf.Variable(tf.fill([54, 373, 3], 0.5), name='weight_rgb')  # 199,16,34, 77
+    # W_a = tf.Variable(tf.fill([54, 373, 1], 0.5), name='weight_a')
+
+    # 均值0.5,标差1分布   minval=0, maxval=1
+    W_rgb = tf.Variable(tf.truncated_normal([54, 373, 3], mean=0.4, stddev=0.25), name='weight_rgb')
+    W_a = tf.Variable(tf.truncated_normal([54, 373, 1], mean=0.4, stddev=0.25), name='weight_a')  # 非0则255
+
+
+    # 定义后向运算：y = w（x）
+    print("定义后向运算：y = w（x）")
+    # print(W_rgb.shape, W_a.shape)
+    # print(tf.multiply(tf.tile(W_a, (1, 1, 3)), W_rgb).shape)
+    factor1 = tf.subtract(X, tf.multiply(tf.tile(W_a, (1, 1, 3)), W_rgb), name=None)   # 减法
+    factor2 = tf.subtract(tf.ones([54, 373, 1], tf.float32), W_a, name=None)   # 减法
+    Y_pred = tf.divide(factor1, factor2, name=None)
+
+    # 定义损失计算
+    print("定义损失计算与sgd优化")
+    points = 54 * 373
+    loss = tf.reduce_sum(tf.pow(Y_pred - Y, 2))/points  # 每个点位差值平方的 均值： 定义loss值
+    # learning_rate = 0.01
+    # learning_rate = 0.25
+    learning_rate = 0.5
+    # learning_rate = 0.75
+    # learning_rate = 1
+    optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss)  # 定义 SGD 随机梯度下降
+    # optimizer = tf.train.AdamOptimizer(learning_rate).minimize(loss)  # adam 优化算法
+
+    n_samples = xs.shape[0]  # 训练样本总数
+    init = tf.global_variables_initializer()  # 开始训练
+    with tf.Session() as sess:
+        sess.run(init)  # 初始化所有变量
+        # 将搜集的变量写入事件文件，提供给Tensorboard使用
+        writer = tf.summary.FileWriter('./graphs/logo_reg', sess.graph)
+
+        # 训练模型: steps
+        steps = 10000
+        for i in range(steps):
+            total_loss = 0  # 设定总共的 损失初始值为0
+            for x, y in zip(xs, ys):  # 遍历每一个样本，进行前后向计算
+                _, l = sess.run([optimizer, loss], feed_dict={X: x, Y: y})
+                total_loss += l  # 计算所有的损失值进行叠加  # 叠加样本集的损失值
+
+            if i % 100 == 0 or i == steps-1:
+                print('Epoch {0}: {1}'.format(i, total_loss/n_samples))
+
+        writer.close()  # 关闭writer
+        W_rgb, W_a = sess.run([W_rgb, W_a])  # 取出w值
+
+    # ndarry 数据与格式转换
+    rgb = np.asarray(W_rgb * 255, dtype=np.uint8)
+    a_ = W_a[:, :, 0] * 255
+    a = np.asarray(a_, dtype=np.uint8)
+    irgb = Image.fromarray(rgb, mode="RGB")  # rgb通道
+    alpha = Image.fromarray(a, mode="L")  # a通道
+    irgb.putalpha(alpha)  # 转换为 rgba 整图
+    irgb.show()
+    tv = getTimeVersion()
+    irgb.save("mylogo_c4gd50w_" + tv + ".png")
+
+    """
+    优化方向：
+        数据集扩充：补充更多的数据集；
+        采用更好优化算法：sgd，adam；
+        （可以不必，纯学习效果不错）通过读入图像的初始化权重；
+        注意处理梯度消失问题，或者计算边界值问题 
+        正则化：
+        mse loss优化 ==》
+            SSIM（结构相似）损失
+            PSNR(Peak Signal-to-Noise Ratio) 峰值信噪比
+            MS-SSIM+L1 损失函数是最好的
+        
+        增加一个logo分类：
+            构造训练的 x-patchs 和 y-1/0； 
+            对所有的样本点进行一个hog特征点提取，在进行svm分类；
+        
+    r0.5 + i0.5 + gd + 1000ep => 0.0004
+    r0.5 + ad + 10000ep => 0.22196987484182631
+    """
+
+if __name__ == '__main__':
+    train_logo()
+    # tensor_test()
+
