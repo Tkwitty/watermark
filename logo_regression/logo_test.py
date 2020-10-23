@@ -1,8 +1,8 @@
 # coding=utf-8
 import cv2
+import random
 import numpy as np
 from PIL import Image, ImageFilter
-import random
 import os
 
 def Aget_initpix(vsrc, valp, vlogo, prt=False):
@@ -103,7 +103,6 @@ def logo_clean_yy(srcp, pngp, savp):
     iout.save(rsavep)
     iout.show()
 
-
 def dir_logorm_test(dir, pngp):
     flist = os.listdir(dir)
     for pp in flist:
@@ -116,6 +115,10 @@ def dir_logorm_test(dir, pngp):
     print("Over!!!")
 
 if __name__ == '__main__':
-    idir = "datas/tx/"
-    dir_logorm_test(idir, pngp="mylogo_gd50w.png")  # 精细微调 + 形态滤波
+    idir = "tests/"
+    # dir_logorm_test(idir, pngp="mylogo_gd50w.png")
+    dir_logorm_test(idir, pngp="ilogor.png")  # a微调
+    # dir_logorm_test(idir, pngp="mylogo_c4gd50k_1124.png")  # 0.4 训练
+    # dir_logorm_test(idir, pngp="logo_c4l2gd01w_2020.png")  # 0.4 训练
+
 

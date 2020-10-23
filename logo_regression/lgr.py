@@ -41,7 +41,6 @@ def learn2everycolor(xnys):
         ws = model_learn(dety, ws, lrate)  # 通过梯度图，原参数图  更新获取新参数图
 
 
-
 """
     针对800x800中对于 373x54
     
@@ -104,4 +103,39 @@ def load_logoDataset(dpath, logo_size):
 # xs, ys = load_logoDataset("datas", (373, 54))
 # print(np.shape(xs), np.shape(ys))
 
+
+# 针对logo区域的数据集
+def load_gray_logoDataset(dpath, logo_size):
+    xpath = os.path.join(dpath, "tx")
+    ypath = os.path.join(dpath, "ty")
+    ximgs = os.listdir(xpath)
+    yimgs = os.listdir(ypath)
+    xdata = []
+    ydata = []
+    if len(ximgs) == len(yimgs):
+        print("数据集大小：", len(ximgs))
+
+    for file in ximgs:
+        print("reading img ", file)
+        iname, iext = tuple(file.split('.'))
+        xname = file
+        yname = iname + "_y." + iext
+        ximg = Image.open(os.path.join(xpath, xname))
+        yimg = Image.open(os.path.join(ypath, yname))
+        w, h = ximg.size
+        lw, lh = logo_size
+        iw, ih = int((w - lw) / 2), int((h - lh) / 2)
+        # xarr = np.array(ximg.convert(mode="L"))/255  # 采用0～1浮点值
+        # yarr = np.array(yimg.convert(mode="L"))/255
+        # xarr = np.array(ximg.convert(mode="L"))
+        # yarr = np.array(yimg.convert(mode="L"))
+        xarr = np.array(ximg)
+        yarr = np.array(yimg)
+        if np.shape(xarr) == np.shape(yarr):
+            xdata.append(xarr[ih:ih+lh, iw:iw+lw, :3])  # 只取logo区域的rgb通道
+            ydata.append(yarr[ih:ih+lh, iw:iw+lw, :3])
+            print("datas shape：", np.shape(xarr), np.shape(yarr))
+        else:
+            print("shape 异常：", np.shape(xarr), np.shape(yarr))
+    return np.array(xdata), np.array(ydata)
 

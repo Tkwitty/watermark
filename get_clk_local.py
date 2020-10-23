@@ -448,7 +448,7 @@ if __name__ == '__main__':
     # imgp = "opc/194_31_36_77.png"
     # imgp = "opc/199_16_34_a2.png"
     # imgp = "opc/lkp_tmd5.png"
-    imgp = "opc/logor.png"
+    imgp = "opc/ilogor.png"
 
     # imgp = "_rev_/sy/yy_rml.jpg"
 

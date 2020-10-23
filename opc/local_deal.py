@@ -245,6 +245,23 @@ def get_png_merge(ipic, apic):
     ipng = Image.open(ipic)
     edit_al_png(np.array(ipng), a_mat)
 
+def png_opc_review(pngp):
+    png = Image.open(pngp)
+    npg = np.array(png)
+    ipg = npg.copy()
+    h, w, c = np.shape(npg)
+    # a_mat = np.array(png.split()[3])  # nlog 为
+    for i in range(h):
+        for j in range(w):
+            r, g, b = tuple(npg[i][j][:3])
+            a_ = npg[i][j][-1]
+            a = 0 if a_ > 245 else a_
+            ipg[i][j] = np.array([r, g, b, a])
+
+    ipng = Image.fromarray(ipg)
+    ipng.save("ilogor.png")
+    ipng.show()
+
 
 # jpic = "666.png"  # 渐变
 # logo_prod(jpic)
@@ -253,7 +270,9 @@ def get_png_merge(ipic, apic):
 # erode_oterLayer("lkp.png")  # 直接拿这张图的轮廓透明度
 
 # get_png_merge("199_16_34.png", "lkp.png")  # 直接拿这张图的颜色值和透明度，那后面图的轮廓
-erode_oterLayer("lkp_o_merge.png")  # 直接拿这张图的轮廓透明度
+# erode_oterLayer("lkp_o_merge.png")  # 直接拿这张图的轮廓透明度
+
+png_opc_review("logor.png")  # 直接拿这张图的轮廓透明度
 
 # l0 = cv2.imread("0logo.jpg")
 # cv2.imshow("hello", l0)
