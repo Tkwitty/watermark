@@ -7,13 +7,21 @@ import time
 import matplotlib.pyplot as plt
 from sklearn import svm
 import joblib
-from lgr import loadDataset, load_logoDataset, load_gray_logoDataset
+import tornado.ioloop
+import tornado.web
+import io
+import os
+from urllib.request import urlopen
+
+from lgr import loadDataset, load_logoDataset, load_gray_logoDataset, \
+    load_delogo_dataset, load_delogo_data
+from logo_test import logo_clean
 
 # 提取图像hog特征向量  (54, 373, 3)
 def hog_extractor(hog, img):  # 计算hog特征
     winStride = (8, 8)
     padding = (8, 8)
-
+    # print("提取前矩阵维度：", np.shape(img))  # (54, 373, 3)
     hog_vector = hog.compute(img, winStride, padding).reshape((-1,))
     return hog_vector
 
@@ -181,51 +189,186 @@ def get_hog():
     hog = cv2.HOGDescriptor(winSize, blockSize, blockStride, cellSize, nbins)
     return hog
 
+
+def get_model_metric(clf, X, Y):
+    from sklearn.metrics import confusion_matrix, roc_auc_score
+    y_pred = clf.predict(X)
+    tn, fp, fn, tp = confusion_matrix(Y, y_pred).ravel()  # 混淆矩阵
+    n = tn + fp + fn + tp
+    acc, prec = round((tn + tp) / n * 1.0, 8), round(tp / (tp + fn) * 1.0, 8)
+    auc = round(roc_auc_score(Y, y_pred), 8)
+    metrics = {"acc": acc, "prec": prec, "auc": auc}
+    print(metrics)
+    return metrics
+
+
+def model2pkl(clf, mname):
+    joblib.dump(clf, mname + ".pkl")
+    print("测试模型持久化与加载。。。")
+    time.sleep(5)
+    iclf = joblib.load("logo_svm_cls.pkl")
+    # print("testing svm logo 分类结果：", iclf.predict(X))
+
+
 def hogtest():
-    dpath = "nologo"  # 数据集 dir
+    dpath = "datas/nologo"  # 数据集 dir
     xs1, xs0 = load_gray_logoDataset(dpath, (373, 54))  # 从图片dir加载数据集
-    # xs 1, ys 0  # ndarry
     hog = get_hog()
     X = []
     Y = []
     for xm in xs1:  # 由于xs全是 wxhx3 通道的map，需要转成灰度图
-        print("hog 输入维度：", np.shape(xm))  # (54, 373, 3)
         x_hogs = hog_extractor(hog, xm)
-        print("hogs 向量维度:", x_hogs, np.shape(x_hogs))  # (202500,)
         X.append(x_hogs)
-        Y.append(1)
-    for xm in xs0:  # 由于xs全是 wxhx3 通道的map，需要转成灰度图
-        print("hog 输入维度：", np.shape(xm))  # (54, 373, 3)
-        x_hogs = hog_extractor(hog, xm)
-        print("hogs 向量维度:", x_hogs, np.shape(x_hogs))  # (202500,)
-        X.append(x_hogs)
-        Y.append(0)
+        Y.append(1)  # 有logo
 
-    print("logo分类数据集：", np.shape(X), np.shape(Y))
+    for xm in xs0:  # 由于xs全是 wxhx3 通道的map，需要转成灰度图
+        x_hogs = hog_extractor(hog, xm)
+        X.append(x_hogs)
+        Y.append(0)  # 无logo
+
+    print("logo分类数据集：", np.shape(X), np.shape(Y))  # 202500维向量
     # (112, 202500) (112,)
 
-    clf = svm.SVC(gamma='scale')
-    clf.fit(X, Y)
+    isvm = svm.SVC(gamma='scale')
+    isvm.fit(X, Y)
     """ # SVC参数:
     C=1.0, cache_size=200, class_weight=None, coef0=0.0,
     decision_function_shape='ovr', degree=3, gamma='scale', kernel='rbf',
     max_iter=-1, probability=False, random_state=None, shrinking=True,
     tol=0.001, verbose=False
     """
-    print("svm logo 分类结果：", clf.predict(X))
-    joblib.dump(clf, "logo_svm_cls.pkl")
 
-    print("测试模型持久化与加载。。。")
-    time.sleep(5)
-    iclf = joblib.load("logo_svm_cls.pkl")
-    print("testing svm logo 分类结果：", iclf.predict(X))
+    from sklearn.linear_model import LogisticRegression
+    lr = LogisticRegression()
+    lr.fit(X, Y)
+
+    print('svm')
+    get_model_metric(isvm, X, Y)
+    print('lr')
+    get_model_metric(lr, X, Y)
+    print('lr预测结果：', lr.predict(X))
+
+    model2pkl(lr, 'lr_logo_cls')
+    print('over.')
+
+
+# def logo_cls2del_test(testp):
+#     ts = load_delogo_dataset(testp, )  # 从图片dir加载数据
+#     hog = get_hog()
+#     T = []
+
+def hog_svm_logo_cls_rm():
+    # tlogos, imgs = load_delogo_dataset("tests", (373, 54))  # 从图片dir加载数据
+    tlogos, imgs = load_delogo_dataset("cls_rm_tests", (373, 54))  # 从图片dir加载数据
+    hog = get_hog()
+    svm = joblib.load("save/logo_svm_cls.pkl")
+    pngp = "ilogor.png"
+    for tlogo, img in zip(tlogos, imgs):
+        hogs = hog_extractor(hog, tlogo)  # hog 特征提取
+        cls = svm.predict([hogs])  # svm 分类器
+        print("svm 分类：", cls)
+        if cls[0] == 1:
+            print("识别到logo水印，消去水印...")
+            logo_clean(img, pngp, savp="xout")  # 去核心水印
+        else:
+            Image.open(img).show()
+            print("没有logo水印，pass")
+    print("over!")
+
+
+def img_logo_rm(imgp, pname):
+    pngp = "ilogor.png"
+    ilogo, img = load_delogo_data(imgp, (373, 54))
+    svm = joblib.load("save/logo_svm_cls.pkl")
+    hogs = hog_extractor(get_hog(), ilogo)  # hog 特征提取
+    cls = svm.predict([hogs])  # svm 分类器
+    print("svm 分类：", cls)
+    if cls[0] == 1:
+        print("识别到logo水印，消去水印...")
+        img_rm = logo_clean(imgp, pngp, savp="svc_temp", pname=pname)  # 去核心水印
+    else:
+        Image.open(imgp).show()
+        print("没有logo水印，pass")
+        img_rm = ""
+
+    return img_rm
+
+
+root_path = "/Users/zcy/PycharmProjects/_sy_/watermark/logo_regression/svc_temp"
+class MainHandler(tornado.web.RequestHandler):
+
+    def post(self):
+        """post请求"""
+        self.get()
+
+    def get(self):
+        """get请求"""
+        t1 = time.perf_counter()
+        pic = self.get_argument('picuri')
+        pname = pic.rsplit('/', 1)[1]
+        suffix = pname.split('.', 1)[1]
+        if suffix in ['jpg', 'jpeg', 'png', 'bmp', 'gif'] and pic.startswith('http'):
+            image_bytes = urlopen(pic).read()
+            pic = io.BytesIO(image_bytes)
+        img_rm = img_logo_rm(pic, pname)  # 分类 与 消去
+        t2 = time.perf_counter()
+        print("请求处理耗时: %s sec." % (t2 - t1))
+
+        # "<img src='" + root_path + "/1622_comp.jpg'><br/>" +
+        # rst = "<a href='/downfile?bpath=dst&fname=1622_rm.jpg'>消去图像下载</a>"
+        rst = "<a href='/downfile?bpath=dst&fname=" + img_rm + "'>消去图像下载</a>"
+        self.write(rst)
+
+
+class DownloadFileHandler(tornado.web.RequestHandler):
+
+    def get(self):
+        print("demo: 127.0.0.1:10935/downfile?bpath=dst&fname=1622_rm.jpg")
+        self.post()
+
+    def post(self):
+        """下载文件: 127.0.0.1:10934/downfile?filename=readme.txt"""
+        bpath = ""
+        if "bpath" in self.request.arguments:
+            bpath = self.get_argument('bpath')
+        fname = self.get_argument('fname')
+
+        self.set_header('Content-Type', 'application/octet-stream')
+        self.set_header('Content-Disposition', 'attachment; filename=' + fname)
+        buf_size = 4096
+        dpath = os.path.join(root_path + "/" + bpath, fname)
+        print("下载地址：", dpath)
+        with open(dpath, 'rb') as f:
+            while True:
+                data = f.read(buf_size)
+                if not data:
+                    break
+                self.write(data)
+        self.finish()
+
+
+def logo_rm_websvc():
+
+    application = tornado.web.Application([
+        (r"/rmlogo", MainHandler),
+        (r"/downfile", DownloadFileHandler),
+    ])
+    port = 10935
+    application.listen(port)
+    print(str(port) + "/rmlogo svc ready...")
+    tornado.ioloop.IOLoop.instance().start()
 
 
 if __name__ == '__main__':
-    train_logo()
+    # train_logo()
 
-    # hogtest()  # hog 特征提取 + svm分类器
+    hogtest()  # hog 特征提取 + svm分类器
+
     # tensor_test()
+    # hog_svm_logo_cls_rm()
+
+    # imgp = "cls_rm_tests/t8.jpg"
+    # img_logo_rm(imgp)
 
     # loss 曲线绘制测试
     # tloss1 = {
@@ -240,6 +383,13 @@ if __name__ == '__main__':
     # }
     # plot_losscurve([tloss1], "test")
 
+    # 去水印的 web 服务
+    # logo_rm_websvc()
+
+"""
+127.0.0.1:10935/rmlogo?picuri=
+https://img14.360buyimg.com/n0/jfs/t1/115934/38/18280/237070/5f661f3aE050bfd8c/5ddcac4e96da4828.jpg
+"""
 
 
 

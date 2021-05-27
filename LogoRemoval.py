@@ -242,7 +242,7 @@ def logo_clean_yy(srcp, pngp, savp):
     iout = Image.fromarray(out_image)
     iout.save(rsavep)
 
-    # iout.show()
+    iout.show()
 
 
 def logo_clean_by_png(srcp, png, savp):
@@ -298,7 +298,6 @@ def get_jd_logo(ilogo, local, logo_wh):
     compLogo(il, (230, 380), (235, 405))
     idm = Image.fromarray(idst)  # .show()
     return idm
-
 """
     求一下这些像素点的 rgb 上的均值
     r,g,b,a = 最终可以通过一组等式求出  但是由于等式不足，需要遍历一个确定值
@@ -308,6 +307,7 @@ def get_jd_logo(ilogo, local, logo_wh):
     但是只得到字体核心处的（rgba），假设rgb恒定不变，字体到背景间变化的是a？
     再通过反减法 取出水印
 """
+
 def compLogo(il, ptl, prb):
     lx, ty = ptl
     rx, by = prb
@@ -368,7 +368,7 @@ def logo_clean_yy_rsh(srcp, savp):
     iout.show()
 
     # irsavep = savp + "/" + spic[0] + "_dlg." + spic[1]
-    # slogo.save(irsavep)  # 保存双水印图
+    # slosgo.save(irsavep)  # 保存双水印图
 
     # dsavep = savp + "/" + spic[0] + "_rm." + spic[1]
     # idst = Image.fromarray(dst)
@@ -378,9 +378,8 @@ def logo_clean_yy_rsh(srcp, savp):
     # iout.save(rsavep)
 
 
-
 img_path = "JD/car2.jpg"
-# img_path = "new/l1.png"
+# img_path = "new/l1.pn g"
 tmplt = "opc/370x52.png"
 img = cv2.imread(img_path)
 dradius = 0
@@ -487,7 +486,6 @@ def get_logobypath(imgp, pngp):
 def get_logobypath_png(imgp, png):
     img = Image.open(imgp)
     image = img.copy()
-
     watermark = png  # 水印 img
 
     if watermark.mode != 'RGBA':
@@ -581,9 +579,9 @@ if __name__ == '__main__':
     # dir_logorm_test(dir, pngp="opc/tmd_fine_12.png")  # 回归 tmd6  亮绿色是因为  没有logo本身透明度不够
     # dir_logorm_test(dir, pngp="opc/tmd_fine_13.png")  #
     # dir_logorm_test(dir, pngp="opc/tmd_fine_14.png")  #
-    # dir_logorm_test(dir, pngp="opc/tmd_fine_15.png")  #
+    dir_logorm_test(dir, pngp="opc/tmd_fine_15.png")  #
 
-    dir_logorm_test(dir, pngp="opc/tmd_fine_20.png")  # 精细微调 + 形态滤波
+    # dir_logorm_test(dir, pngp="opc/tmd_fine_20.png")  # 精细微调 + 形态滤波
     # fine-15 最终方案，仍然有一些瑕疵，但是这些瑕疵算法修补成本高，抠图修补
 
     # 候补方案： 对边缘点采用  候补核滤波
@@ -591,6 +589,7 @@ if __name__ == '__main__':
 
     # 编写 rgb滑动 调色程序, 显示消去效果图
     # 188~194, 12~22, 30~40
+
 
 """
 需要生成水印图对应的 蒙版size图，再进行inpaint，重要参数：

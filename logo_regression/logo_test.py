@@ -4,6 +4,13 @@ import random
 import numpy as np
 from PIL import Image, ImageFilter
 import os
+import time
+
+
+def getTimeVersion():
+    stime = time.strftime('%H%M', time.localtime(time.time()))
+    return stime
+
 
 def Aget_initpix(vsrc, valp, vlogo, prt=False):
     if valp == 1:
@@ -23,7 +30,7 @@ def get_logobypath(imgp, pngp):
     img = Image.open(imgp)
     image = img.copy()
 
-    print("logo地址:", pngp)
+    # print("logo地址:", pngp)
     watermark = Image.open(pngp)  # 水印路径，加在下侧
 
     if watermark.mode != 'RGBA':
@@ -40,6 +47,7 @@ def get_logobypath(imgp, pngp):
     paste_mask = watermark.split()[3].point(lambda i: i * TRANSPARENCY / 100.)  # 第四通道
     image.paste(watermark, (iw, ih + 60), mask=paste_mask)  # pm是wm本身第四通道的像素值
     return image, watermark, (iw, ih), paste_mask
+
 
 def pix_logo_rm(src, wm, local, pmask):
     sw, sh = local
@@ -103,6 +111,42 @@ def logo_clean_yy(srcp, pngp, savp):
     iout.save(rsavep)
     iout.show()
 
+
+def logo_clean(srcp, pngp, savp, pname=None):
+    ilogo = Image.open(srcp)  # 读入的图片
+
+    # 2、采用逆向计算方式W， 先通过对原图与系统已有的logo模板，获取一些参数
+    _, wm, (iw, ih), pmask = get_logobypath(srcp, pngp)  # 获取计算资源
+    dst = pix_logo_rm(ilogo, wm, (iw, ih), pmask)  # 除原生水印  214 373
+
+    if not os.path.exists(savp + "/dst"):
+        os.makedirs(savp + "/dst")
+
+    # 保存结果图  此处srcp不是字符串而是 图像IO对象
+    # spic = srcp.rsplit('/', 1)[1].split('.')  # name + subfix
+    spic = srcp.rsplit('/', 1)[1].split('.') \
+        if pname == None else pname.split(".")  # 传输了 suffix 说明是web请求而非本地
+
+    w, h = ilogo.size
+    out_image = np.zeros((h, w * 2, 3), dtype=np.uint8)
+    out_image[:, :w] = ilogo  # 原图
+    out_image[:, w:] = Image.fromarray(dst)
+
+    dsavep = savp + "/dst/" + spic[0] + "_rm." + spic[1]
+    idst = Image.fromarray(dst)
+    idst.save(dsavep)
+
+    rsavep = savp + "/" + spic[0] + "_comp." + spic[1]
+    iout = Image.fromarray(out_image)
+    iout.save(rsavep)
+
+    print("保存位置：", dsavep, " & ", rsavep)
+    iout.show()
+
+    img_rm = spic[0] + "_rm." + spic[1]
+    return img_rm
+
+
 def dir_logorm_test(dir, pngp):
     flist = os.listdir(dir)
     for pp in flist:
@@ -114,11 +158,16 @@ def dir_logorm_test(dir, pngp):
             )
     print("Over!!!")
 
+
 if __name__ == '__main__':
-    idir = "tests/"
+    # idir = "tests/"
+    idir = "../_rev_/"
+
     # dir_logorm_test(idir, pngp="mylogo_gd50w.png")
     dir_logorm_test(idir, pngp="ilogor.png")  # a微调
     # dir_logorm_test(idir, pngp="mylogo_c4gd50k_1124.png")  # 0.4 训练
     # dir_logorm_test(idir, pngp="logo_c4l2gd01w_2020.png")  # 0.4 训练
+
+    # logo_clean_yy(srcp=dir + pp, pngp=pngp, savp="test_out")
 
 

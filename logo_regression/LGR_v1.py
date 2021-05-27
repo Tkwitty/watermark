@@ -17,8 +17,8 @@ def tensor_test():
     sess.close()
 
 def plot_losscurve(lossdicts, sav):
-    fig = plt.figure(figsize=(7, 5))  # figsize是图片的大小`
-    ax1 = fig.add_subplot(1, 1, 1)  # ax1是子图的名字`
+    fig = plt.figure(figsize=(7, 5))  # figsize是图片的大小
+    ax1 = fig.add_subplot(1, 1, 1)  # ax1是子图的名字
     ax1.set_title('loss curve figs')
     ax1.set_xlabel('epoch')
     ax1.set_ylabel('training loss')
@@ -30,14 +30,25 @@ def plot_losscurve(lossdicts, sav):
         ax1.plot(eps, lss, label=dic['title'])  # 线型，颜色，标记，名称
 
     plt.legend()
-    plt.savefig("loss_" + sav + ".png")
+    plt.savefig("save/loss_" + sav + ".png")
     plt.show()
     print("plot over")
 
 
+def generate_png_w(wrgb, wa, name):
+    rgb = np.asarray(wrgb * 255, dtype=np.uint8)
+    a_ = wa[:, :, 0] * 255
+    a = np.asarray(a_, dtype=np.uint8)
+    irgb = Image.fromarray(rgb, mode="RGB")  # rgb通道
+    alpha = Image.fromarray(a, mode="L")  # a通道
+    irgb.putalpha(alpha)  # 转换为 rgba 整图
+    irgb.save("save/logo_" + name + ".png")
+    irgb.show()
+
+
 def train_logo():
     # 准备一波样本，x为带水印的mat，y为不带水印的mat
-    dpath = "nologo"  # 数据集 dir
+    dpath = "datas/nologo"  # 数据集 dir
     # xs, ys = loadDataset(dpath)  # 从图片dir加载数据集
     xs, ys = load_logoDataset(dpath, (373, 54))  # 从图片dir加载数据集
     print(np.shape(xs), np.shape(ys))
@@ -78,7 +89,8 @@ def train_logo():
     # 定义损失计算
     print("定义损失计算与sgd优化")
     points = 54 * 373
-    loss = tf.reduce_sum(tf.pow(Y_pred - Y, 2))/points  # 每个点位差值平方的 均值： 定义loss值
+    # loss = tf.reduce_sum(tf.pow(Y_pred - Y, 2))/points  # 每个点位差值平方的 均值： 定义loss值  MSE - ls loss
+    loss = tf.reduce_sum(tf.abs(Y_pred - Y))/points  # l1 loss
     # learning_rate = 0.001
     # learning_rate = 0.1
     # learning_rate = 0.25
@@ -90,7 +102,8 @@ def train_logo():
     # optimizer = tf.train.AdamOptimizer(1e-3).minimize(loss)
     # 学习率越小，越能接近极值；学习率过大，找不到极值
 
-    arg_version = "c4l2gd50w"
+    # arg_version = "c4l2gd50w"
+    arg_version = "x_c4l1sl2gd50w"
     n_samples = xs.shape[0]  # 训练样本总数
     init = tf.global_variables_initializer()  # 开始训练
     with tf.Session() as sess:
@@ -99,7 +112,7 @@ def train_logo():
         writer = tf.summary.FileWriter('./graphs/logo_reg', sess.graph)
 
         # 训练模型: steps
-        steps = 10000
+        steps = 1000
         iloss = {'title': arg_version, 'eps': [], 'loss': [], 'tr_time': 0}
         t0 = time.perf_counter()
         for i in range(steps):
@@ -109,10 +122,14 @@ def train_logo():
                 total_loss += l  # 计算所有的损失值进行叠加  # 叠加样本集的损失值
 
             if i % 100 == 0 or i == steps-1:
+            # if i % 2 == 0 or i == steps-1:
                 mse = total_loss/n_samples
                 iloss['eps'].append(i)
                 iloss['loss'].append(mse)
                 print('Epoch {0}: {1}'.format(i, mse))
+
+                wrgb, wa = sess.run([W_rgb, W_a])  # 取出w值
+                generate_png_w(wrgb, wa, arg_version + "_" + str(i))  # 生成与显示 当前logo学习效果
 
         t1 = time.perf_counter()
         print("train time waste: ", t1 - t0)
@@ -120,16 +137,8 @@ def train_logo():
         W_rgb, W_a = sess.run([W_rgb, W_a])  # 取出w值
 
     # ndarry 数据与格式转换
-    rgb = np.asarray(W_rgb * 255, dtype=np.uint8)
-    a_ = W_a[:, :, 0] * 255
-    a = np.asarray(a_, dtype=np.uint8)
-    irgb = Image.fromarray(rgb, mode="RGB")  # rgb通道
-    alpha = Image.fromarray(a, mode="L")  # a通道
-    irgb.putalpha(alpha)  # 转换为 rgba 整图
-    irgb.show()
-
-    tr_version = arg_version + getTimeVersion()
-    irgb.save("logo_" + tr_version + ".png")
+    tr_version = arg_version + "_" + getTimeVersion()
+    generate_png_w(W_rgb, W_a, tr_version)
 
     # 绘制+保存 loss 曲线
     iloss['title'] = arg_version
@@ -153,9 +162,12 @@ def train_logo():
         增加一个logo分类：
             构造训练的 x-patchs 和 y-1/0； 
             对所有的样本点进行一个hog特征点提取，在进行svm分类；
+            
+        训练可视化：如何在训练的epoch过程中将参数获取
         
     r0.5 + i0.5 + gd + 1000ep => 0.0004, 0.0011
     r0.5 + ad + 10000ep => 0.22196987484182631
+     0.0004211
     """
 
 if __name__ == '__main__':

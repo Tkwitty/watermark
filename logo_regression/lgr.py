@@ -139,3 +139,37 @@ def load_gray_logoDataset(dpath, logo_size):
             print("shape 异常：", np.shape(xarr), np.shape(yarr))
     return np.array(xdata), np.array(ydata)
 
+
+# 从dir加载图片的logo位置的数据样本
+def load_delogo_dataset(tpath, logo_size):
+    timgs = os.listdir(tpath)
+    tdata = []
+    imgps = []
+    print("测试集大小：", len(timgs))
+    for file in timgs:
+        print("reading img ", file)
+        if not file.endswith('.jpg'):
+            continue
+        ximg = Image.open(os.path.join(tpath, file))
+        w, h = ximg.size
+        lw, lh = logo_size
+        iw, ih = int((w - lw) / 2), int((h - lh) / 2)
+        xarr = np.array(ximg)
+        if np.shape(xarr)[2] > 2:
+            tdata.append(xarr[ih:ih + lh, iw:iw + lw, :3])
+            imgps.append(os.path.join(tpath, file))
+        else:
+            print("channel num exception !")
+
+    return np.array(tdata), imgps
+
+
+# 从dir加载图片的logo位置的数据样本
+def load_delogo_data(ipath, logo_size):
+    ximg = Image.open(ipath)
+    w, h = ximg.size
+    lw, lh = logo_size
+    iw, ih = int((w - lw) / 2), int((h - lh) / 2)
+    xarr = np.array(ximg)
+    return xarr[ih:ih + lh, iw:iw + lw, :3], ximg
+
