@@ -10,7 +10,6 @@ def get_src_logo_img(img):  # 传入pil-img
     watermark = Image.open("opc/370x52.png")  # 水印路径
     TRANSPARENCY = 100
     # image = Image.fromarray(img)
-
     if watermark.mode != 'RGBA':
         alpha = Image.new('L', watermark.size, 255)  # 创建A通道  L表示8位灰度图
         watermark.putalpha(alpha)  # pil RGB 如何转 BGR
@@ -23,13 +22,10 @@ def get_src_logo_img(img):  # 传入pil-img
     ih = int((bh - sh) / 2)
     print(bw, bh, sw, sh, "==>", iw, ih)
     paste_mask = watermark.split()[3].point(lambda i: i * TRANSPARENCY / 100.)  # 第四通道
-
     # wr, wg, wb, wa = watermark.split()
     # iwatermark = Image.merge('RGBA', (wg, wb, wr, wa))  # paste之前，水印红蓝反色
-
     image.paste(watermark, (iw, ih), mask=paste_mask)
     return image
-
 
 def save_sameshape_logo_mask_pic(img, watermark):
     img = Image.open(img)
@@ -74,7 +70,6 @@ def save_sameshape_logo_mask_pic(img, watermark):
     return cv2.cvtColor(np.array(img).astype(np.uint8), cv2.COLOR_RGBA2BGR), \
            cv2.cvtColor(np.array(rblk).astype(np.uint8), cv2.COLOR_RGBA2GRAY)
 
-
 def get_water(srcp, maskp, outp):
     # 黑底白字
     src = cv2.imread(srcp)  # 默认的彩色图(IMREAD_COLOR)方式读入原始图像
@@ -94,11 +89,9 @@ def get_water(srcp, maskp, outp):
     cv2.imwrite(dstp, dst)
     cv2.waitKey()
 
-
 def logo_clean_show(srcp):
     tmplt = "opc/370x52.png"
     img, imask = save_sameshape_logo_mask_pic(srcp, tmplt)  # 根据任意原图 和一张logo模板，生成该图的对应size的蒙版(cv2)
-
     # dst = cv2.inpaint(img, imask, 3, cv2.INPAINT_TELEA)  # src, mask, 邻域半径, 修复方式
     # dst = cv2.inpaint(img, imask, 3, cv2.INPAINT_NS)  # src, mask, 邻域半径, 修复方式
     dst = cv2.inpaint(img, imask, 1, cv2.INPAINT_NS)  # src, mask, 邻域半径, 修复方式
@@ -107,20 +100,16 @@ def logo_clean_show(srcp):
     # dst = cv2.inpaint(img, imask, 9, cv2.INPAINT_TELEA)  # src, mask, 邻域半径, 修复方式
     # dst = cv2.inpaint(img, imask, 11, cv2.INPAINT_TELEA)  # src, mask, 邻域半径, 修复方式
     # dst = cv2.inpaint(img, imask, 15, cv2.INPAINT_TELEA)  # src, mask, 邻域半径, 修复方式
-
     # cv2.imshow("hi", img)
     # cv2.imshow("fine", imask)
     # cv2.imshow("hello", dst)
     # cv2.waitKey()
-
     spic = srcp.rsplit('/', 1)[1].split('.')  # name + subfix
     savep = "JD_out/" + spic[0] + "_rw." + spic[1]
     print(savep)
     cv2.imwrite(savep, dst)
-
     # idst = Image.fromarray(dst, mode="RGB")
     # idst.save(savep)
-
     # 保存 三位一体 对比图
     simg = Image.open(srcp)  # 原图
     slogo = get_src_logo_img(simg)  # jd输入
@@ -135,21 +124,16 @@ def logo_clean_show(srcp):
     rsavep = "JD_rst/" + spic[0] + "_comp." + spic[1]
     Image.fromarray(out_image).save(rsavep)
 
-
 if __name__ == '__main__':
     # srcp = "clean_test/aha_13.png"
     # mb = "clean_test/aha_13_logo.png"
     # get_water(srcp, mb, "test_dewm")
     # srcp = "JD/jd_clean.png"
-
     flist = os.listdir("JD")
     for pp in flist:
         logo_clean_show("JD/" + pp)
 
     print("Over")
-
-
-
 
 """
 需要生成水印图对应的 蒙版size图，再进行inpaint，重要参数：

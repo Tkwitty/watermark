@@ -356,7 +356,6 @@ def deal_wpng2png(wpic):
 # erode_oterLayer("lkp_af_merge.png")  # 直接拿这张图的轮廓透明度
 erode_oterLayer("lkp_af_merge.png")  # 直接拿这张图的轮廓透明度
 
-
 # l0 = cv2.imread("0logo.jpg")
 # cv2.imshow("hello", l0)
 # cv2.waitKey()

@@ -15,8 +15,7 @@ def model_learn(dety, ws, lrate):
     h, w, c = np.shape(dety)  # 推荐采用矩阵计算
     ws_ = ws.copy()
     for i in range(h):
-        for j in range(w):
-            # 此处应该只有rgb的梯度，根据每个梯度计算ws更新
+        for j in range(w):  # 此处应该只有rgb的梯度，根据每个梯度计算ws更新
             rd, gd, bd = tuple(dety[i][j])  # 拆分梯度值
             wr, wg, wb, wa = tuple(ws[i][j])  # 拆分old 权重参数
             wr = wr + lrate * (rd * (wa-1) / wa)
@@ -26,9 +25,7 @@ def model_learn(dety, ws, lrate):
             wa = wa + lrate * ()
     return 0
 
-"""
-    内部计算全部以0～1为准
-"""
+"""内部计算全部以0～1为准"""
 def learn2everycolor(xnys):
     ws = np.ones((373, 54), dtype=np.float) * 0.5  # 初始值是一张全部为0.5的logo图片
     lrate = 0.04  # 学习率 (1/255)
@@ -43,7 +40,6 @@ def learn2everycolor(xnys):
 
 """
     针对800x800中对于 373x54
-    
     bw, bh = img.size  # shape的宽高位置和pil的有区别！！！
     sw, sh = watermark.size
     iw = int((bw - sw) / 2)
@@ -72,7 +68,8 @@ def loadDataset(dpath):
 
 # 针对logo区域的数据集
 def load_logoDataset(dpath, logo_size):
-    xpath = os.path.join(dpath, "tx")
+    # xpath = os.path.join(dpath, "tx")
+    xpath = os.path.join(dpath, "zx")
     ypath = os.path.join(dpath, "ty")
     ximgs = os.listdir(xpath)
     yimgs = os.listdir(ypath)
@@ -94,15 +91,20 @@ def load_logoDataset(dpath, logo_size):
         xarr = np.array(ximg)/255  # 采用0～1浮点值
         yarr = np.array(yimg)/255
         if np.shape(xarr) == np.shape(yarr):
-            xdata.append(xarr[ih:ih+lh, iw:iw+lw, :3])  # 只取logo区域的rgb通道
-            ydata.append(yarr[ih:ih+lh, iw:iw+lw, :3])
+            try:
+                xdata.append(xarr[ih:ih+lh, iw:iw+lw, :3])  # 只取logo区域的rgb通道
+                ydata.append(yarr[ih:ih+lh, iw:iw+lw, :3])
+            except:
+                print('添加异常，pass')
         else:
             print("shape 异常：", np.shape(xarr), np.shape(yarr))
+        if len(xdata) == len(ydata):
+            print('完成数据加载...')
     return np.array(xdata), np.array(ydata)
+
 
 # xs, ys = load_logoDataset("datas", (373, 54))
 # print(np.shape(xs), np.shape(ys))
-
 
 # 针对logo区域的数据集
 def load_gray_logoDataset(dpath, logo_size):
@@ -160,7 +162,6 @@ def load_delogo_dataset(tpath, logo_size):
             imgps.append(os.path.join(tpath, file))
         else:
             print("channel num exception !")
-
     return np.array(tdata), imgps
 
 

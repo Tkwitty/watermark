@@ -1,9 +1,6 @@
 
 按照手工logo反推法，去除京东原生logo时，得到的结构像素如下【本应该是全 000的】
-
 就是说，在logo字体处 很多的  RG 通道像素值 偏高，导致整体呈现黄色！！！
-
-
 
 
 C:\Users\Tinkle_GW\venv\Scripts\python.exe C:/Users/Tinkle_GW/Desktop/wm_rsh/get_clk_local.py

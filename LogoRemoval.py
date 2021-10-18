@@ -252,9 +252,7 @@ def logo_clean_by_png(srcp, png, savp):
     slogo, wm, (iw, ih), pmask = get_logobypath_png(srcp, png)  # 获取计算资源, 获取双水印
     dst_ = pix_logo_rm(slogo, wm, (iw, ih), pmask)  # 除原生水印  214 373
     dst = pix_logo_rm(Image.fromarray(dst_), wm, (iw, ih+60), pmask)  # 除下方60pix人工水印
-
     Image.fromarray(dst).show()
-
     # # savp = savp + "yyjd"
     # if not os.path.exists(savp):
     #     os.makedirs(savp)
@@ -262,16 +260,13 @@ def logo_clean_by_png(srcp, png, savp):
 
     # # 保存结果图
     # spic = srcp.rsplit('/', 1)[1].split('.')  # name + subfix
-
     # w, h = ilogo.size
     # out_image = np.zeros((h, w * 3, 3), dtype=np.uint8)
     # out_image[:, :w] = ilogo  # 原图
     # out_image[:, w:w * 2] = slogo  # 手工图 + logo 与原图对比
     # out_image[:, w * 2:] = Image.fromarray(dst)
-
     # rsavep = savp + "/" + spic[0] + "_comp." + spic[1]
     # iout = Image.fromarray(out_image)
-
     # iout.save(rsavep)
     # iout.show()
 
@@ -298,12 +293,12 @@ def get_jd_logo(ilogo, local, logo_wh):
     compLogo(il, (230, 380), (235, 405))
     idm = Image.fromarray(idst)  # .show()
     return idm
+
 """
     求一下这些像素点的 rgb 上的均值
     r,g,b,a = 最终可以通过一组等式求出  但是由于等式不足，需要遍历一个确定值
     将 a 从0~255个值进行遍历，每个a值将有一个确定的 rgb 值
     则 rgba 求解得到
-    
     但是只得到字体核心处的（rgba），假设rgb恒定不变，字体到背景间变化的是a？
     再通过反减法 取出水印
 """

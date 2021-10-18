@@ -1,0 +1,4239 @@
+水印处理算法源码
+
+# -*- coding: utf-8 -*-
+# @Author  : guowei.yy@cai-inc.com
+# @File    : img_dowm.py
+# 准备一个在线样本的url list，基于给定list逐个下载图片作为数据集.
+from urllib.request import urlopen
+import os
+import urllib.request
+import time
+
+def req_download(IMAGE_URL, SAV_PATH):
+    import requests
+    r = requests.get(IMAGE_URL, stream=True)
+    with open(SAV_PATH, 'wb') as f:
+        for chunk in r.iter_content(chunk_size=32):
+            f.write(chunk)
+
+def getTimeVersion():
+    stime = time.strftime('%H%M', time.localtime(time.time()))
+    return stime
+
+if __name__ == '__main__':
+    with open('imglist.txt', 'r') as f:
+        urll = f.readlines()
+
+    print(len(urll))
+    sid = 9  # 数据id起始号码
+    file_path = './nologo'
+    if not os.path.exists(file_path):
+        os.makedirs(file_path + "/tx")
+        os.makedirs(file_path + "/ty")
+
+    for i, url in enumerate(urll):
+        if len(url.strip()) > 10 and url.startswith("http"):  # 判断是否为有效url
+            url = url.split('.jpg', 1)[0] + '.jpg'
+            # url = " http://" + url.split('.jpg', 1)[0] + '.jpg'
+            print("合法url", end='>>> ')
+            pass
+        else:
+            print("非法url：", url)
+            continue
+        try:
+            if not os.path.exists(file_path):
+                os.makedirs(file_path)  # 如果没有这个path则直接创建
+            file_suffix = os.path.splitext(url)[1]  # 文件拓展名
+            fn = "yy" + str(i + sid)
+            xfilename = '{}/tx/{}{}'.format(file_path, fn, file_suffix)
+            yfilename = '{}/ty/{}_y{}'.format(file_path, fn, file_suffix)
+            xurl = url  # 下载原图
+            yurl = url.replace('n0/jfs', 'n1/s800x800_jfs')  # 下载大图
+            req_download(xurl, xfilename)
+            req_download(yurl, yfilename)
+            print("下载图片：", xurl, "\n", xfilename, yfilename)
+
+        except IOError as e:
+            print(1, e)
+        except Exception as e:
+            print(2, e)  # unknown url type
+
+    print("over")
+
+# 以京东水印图为例的 一个样本集.
+https://img14.360buyimg.com/n0/jfs/t26233/28/1268681942/10517/8ac66c9d/5bc57eb1N7e5d371f.jpg
+https://img14.360buyimg.com/n0/jfs/t25207/209/2115797162/295003/eae9bfdf/5bc57eaeNe7daa028.jpg
+https://img14.360buyimg.com/n0/jfs/t27049/330/1284373789/126490/2a3d813c/5bc57e8fNbb1dc394.jpg
+https://img14.360buyimg.com/n0/jfs/t25366/50/1317563147/14923/900f4d0c/5bc57eb1Ne447b403.jpg
+https://img14.360buyimg.com/n0/jfs/t26662/319/1260706455/12502/76b03aa1/5bc57eb2N2cb4b7f6.jpg
+https://img14.360buyimg.com/n0/jfs/t26707/9/1284908822/19051/54f7701/5bc57eb2N2a34c386.jpg
+https://img14.360buyimg.com/n0/jfs/t27364/259/1278641071/12703/ccd00f1/5bc57eb2N3931e754.jpg
+https://img14.360buyimg.com/n0/jfs/t24799/260/2161843414/17269/1884bcf0/5bc57eb2N828d55aa.jpg
+https://img14.360buyimg.com/n0/jfs/t26584/15/1303324723/18010/ce33d479/5bc57eb3Nf99c47b1.jpg
+https://img14.360buyimg.com/n0/jfs/t27052/309/1253281633/15781/6fb35aa7/5bc57eb3N31efdc22.jpg
+https://img14.360buyimg.com/n0/jfs/t26764/322/1264778656/15613/e2fb95f5/5bc57eb3N3196180c.jpg
+https://img14.360buyimg.com/n0/jfs/t26755/242/1118336535/15651/79e7bfae/5bc57eb4Na0bee9eb.jpg
+https://img14.360buyimg.com/n0/jfs/t26959/318/1308007172/16928/f156774e/5bc57eb4N0473284f.jpg
+https://img14.360buyimg.com/n0/jfs/t27325/293/1290168721/15691/92b41600/5bc57eb5N3a00d5d3.jpg
+https://img14.360buyimg.com/n0/jfs/t25189/210/2138631185/110240/1a063556/5bc57eb5Nad71e4c2.jpg
+https://img14.360buyimg.com/n0/jfs/t27559/271/1299800889/20004/10579bd9/5bc57eb5N929d5ed9.jpg
+https://img14.360buyimg.com/n0/jfs/t27367/272/1294390690/13604/eefc50e3/5bc57eb6Na5faeafa.jpg
+https://img14.360buyimg.com/n0/jfs/t25165/6/2146021025/6277/5f620274/5bc57eb6N1b93cdbb.jpg
+https://img14.360buyimg.com/n0/jfs/t26341/295/1097631186/12133/7a628ccb/5bc57eb6N01501b03.jpg
+https://img14.360buyimg.com/n0/jfs/t26824/344/1292912495/14182/7d886230/5bc57eb6N7a4e2358.jpg
+https://img14.360buyimg.com/n0/jfs/t27829/326/1282219849/4753/baeae10b/5bc57eb4Nfcf33e14.jpg
+https://img14.360buyimg.com/n0/jfs/t27628/272/1261990528/5709/761fe1d3/5bc57eb3N51c2d605.jpg
+
+# -*- coding: utf-8 -*-
+# @Author  : guowei.yy@cai-inc.com
+# @File    : lgr.py
+# 包括一些加载图片数据集，ROI区域数据集的一些工具方法
+import numpy as np
+from PIL import Image
+import os
+
+def model_x2src_w(x, ws):  # 消去模型 预测
+    alpha = ws[:, :, -1] / 255  # 最后一层透明层
+    lrgb = ws[:, :, :3]  # logo的rbg值
+    # x = y*(1-a) + l*a
+    # y = (x-l*a)/(1-a)
+    y = (x - lrgb * alpha) / (1 - alpha)
+    return y
+
+def model_learn(dety, ws, lrate):
+    h, w, c = np.shape(dety)  # 推荐采用矩阵计算
+    ws_ = ws.copy()
+    for i in range(h):
+        for j in range(w):  # 此处应该只有rgb的梯度，根据每个梯度计算ws更新
+            rd, gd, bd = tuple(dety[i][j])  # 拆分梯度值
+            wr, wg, wb, wa = tuple(ws[i][j])  # 拆分old 权重参数
+            wr = wr + lrate * (rd * (wa-1) / wa)
+            wg = wg + lrate * (gd * (wa-1) / wa)
+            wb = wb + lrate * (bd * (wa-1) / wa)
+            delt_a = (np.mean([rd, gd, bd]) - np.mean([wr, wg, wb])) / (1-0)
+            wa = wa + lrate * ()
+    return 0
+
+"""内部计算全部以0～1为准"""
+def learn2everycolor(xnys):
+    ws = np.ones((373, 54), dtype=np.float) * 0.5  # 初始值是一张全部为0.5的logo图片
+    lrate = 0.04  # 学习率 (1/255)
+    for x, y in xnys:  # 遍历所有训练样本，训练参数
+        # ws（x）= y' ～ y
+        yp = model_x2src_w(x, ws)
+        dety = y - yp  # 差值
+        loss = np.mean(dety)
+        # 参数区位： i，j，k  位置+通道
+        ws = model_learn(dety, ws, lrate)  # 通过梯度图，原参数图  更新获取新参数图
+
+"""
+    针对800x800中对于 373x54
+    bw, bh = img.size  # shape的宽高位置和pil的有区别！！！
+    sw, sh = watermark.size
+    iw = int((bw - sw) / 2)
+    ih = int((bh - sh) / 2)
+"""
+def loadDataset(dpath):
+    xpath = os.path.join(dpath, "tx")
+    ypath = os.path.join(dpath, "ty")
+    ximgs = os.listdir(xpath)
+    yimgs = os.listdir(ypath)
+    xdata = []
+    ydata = []
+    if len(ximgs) == len(yimgs):
+        print("数据集大小：", len(ximgs))
+    for file in ximgs:
+        iname, iext = tuple(file.split('.'))
+        xname = file
+        yname = iname + "_y." + iext
+        ximg = Image.open(os.path.join(xpath, xname))
+        yimg = Image.open(os.path.join(ypath, yname))
+        xdata.append(np.array(ximg))
+        ydata.append(np.array(yimg))
+
+    return np.array(xdata), np.array(ydata)
+
+# 针对logo区域的数据集
+def load_logoDataset(dpath, logo_size):
+    xpath = os.path.join(dpath, "tx")
+    ypath = os.path.join(dpath, "ty")
+    ximgs = os.listdir(xpath)
+    yimgs = os.listdir(ypath)
+    xdata = []
+    ydata = []
+    if len(ximgs) == len(yimgs):
+        print("数据集大小：", len(ximgs))
+
+    for file in ximgs:
+        print("reading img ", file)
+        iname, iext = tuple(file.split('.'))
+        xname = file
+        yname = iname + "_y." + iext
+        ximg = Image.open(os.path.join(xpath, xname))
+        yimg = Image.open(os.path.join(ypath, yname))
+        w, h = ximg.size
+        lw, lh = logo_size
+        iw, ih = int((w - lw) / 2), int((h - lh) / 2)
+        xarr = np.array(ximg)/255  # 采用0～1浮点值
+        yarr = np.array(yimg)/255
+        if np.shape(xarr) == np.shape(yarr):
+            xdata.append(xarr[ih:ih+lh, iw:iw+lw, :3])  # 只取logo区域的rgb通道
+            ydata.append(yarr[ih:ih+lh, iw:iw+lw, :3])
+        else:
+            print("shape 异常：", np.shape(xarr), np.shape(yarr))
+    return np.array(xdata), np.array(ydata)
+
+# xs, ys = load_logoDataset("datas", (373, 54))
+# print(np.shape(xs), np.shape(ys))
+
+# 针对logo区域的数据集
+def load_gray_logoDataset(dpath, logo_size):
+    xpath = os.path.join(dpath, "tx")
+    ypath = os.path.join(dpath, "ty")
+    ximgs = os.listdir(xpath)
+    yimgs = os.listdir(ypath)
+    xdata = []
+    ydata = []
+    if len(ximgs) == len(yimgs):
+        print("数据集大小：", len(ximgs))
+
+    for file in ximgs:
+        print("reading img ", file)
+        iname, iext = tuple(file.split('.'))
+        xname = file
+        yname = iname + "_y." + iext
+        ximg = Image.open(os.path.join(xpath, xname))
+        yimg = Image.open(os.path.join(ypath, yname))
+        w, h = ximg.size
+        lw, lh = logo_size
+        iw, ih = int((w - lw) / 2), int((h - lh) / 2)
+        # xarr = np.array(ximg.convert(mode="L"))/255  # 采用0～1浮点值
+        # yarr = np.array(yimg.convert(mode="L"))/255
+        # xarr = np.array(ximg.convert(mode="L"))
+        # yarr = np.array(yimg.convert(mode="L"))
+        xarr = np.array(ximg)
+        yarr = np.array(yimg)
+        if np.shape(xarr) == np.shape(yarr):
+            xdata.append(xarr[ih:ih+lh, iw:iw+lw, :3])  # 只取logo区域的rgb通道
+            ydata.append(yarr[ih:ih+lh, iw:iw+lw, :3])
+            print("datas shape：", np.shape(xarr), np.shape(yarr))
+        else:
+            print("shape 异常：", np.shape(xarr), np.shape(yarr))
+    return np.array(xdata), np.array(ydata)
+
+# 从dir加载图片的logo位置的数据样本
+def load_delogo_dataset(tpath, logo_size):
+    timgs = os.listdir(tpath)
+    tdata = []
+    imgps = []
+    print("测试集大小：", len(timgs))
+    for file in timgs:
+        print("reading img ", file)
+        if not file.endswith('.jpg'):
+            continue
+        ximg = Image.open(os.path.join(tpath, file))
+        w, h = ximg.size
+        lw, lh = logo_size
+        iw, ih = int((w - lw) / 2), int((h - lh) / 2)
+        xarr = np.array(ximg)
+        if np.shape(xarr)[2] > 2:
+            tdata.append(xarr[ih:ih + lh, iw:iw + lw, :3])
+            imgps.append(os.path.join(tpath, file))
+        else:
+            print("channel num exception !")
+    return np.array(tdata), imgps
+
+# 从dir加载图片的logo位置的数据样本
+def load_delogo_data(ipath, logo_size):
+    ximg = Image.open(ipath)
+    w, h = ximg.size
+    lw, lh = logo_size
+    iw, ih = int((w - lw) / 2), int((h - lh) / 2)
+    xarr = np.array(ximg)
+    return xarr[ih:ih + lh, iw:iw + lw, :3], ximg
+
+# -*- coding: utf-8 -*-
+# @Author  : guowei.yy@cai-inc.com
+# @File    : LGR_v1.py
+# 第一版模型训练脚本
+import numpy as np
+import tensorflow as tf
+from PIL import Image
+import time
+import matplotlib.pyplot as plt
+from lgr import loadDataset, load_logoDataset
+
+def getTimeVersion():
+    stime = time.strftime('%H%M', time.localtime(time.time()))
+    return stime
+
+def tensor_test():
+    v = tf.truncated_normal([10, 10], mean=0.5, stddev=0.25)
+    sess = tf.Session()
+    print(sess.run(v))
+    sess.close()
+
+def plot_losscurve(lossdicts, sav):
+    fig = plt.figure(figsize=(7, 5))  # figsize是图片的大小
+    ax1 = fig.add_subplot(1, 1, 1)  # ax1是子图的名字
+    ax1.set_title('loss curve figs')
+    ax1.set_xlabel('epoch')
+    ax1.set_ylabel('training loss')
+
+    print("plot begain")
+    for dic in lossdicts:  # epoch + val
+        eps = dic['eps']
+        lss = dic['loss']
+        ax1.plot(eps, lss, label=dic['title'])  # 线型，颜色，标记，名称
+
+    plt.legend()
+    plt.savefig("save/loss_" + sav + ".png")
+    plt.show()
+    print("plot over")
+
+def generate_png_w(wrgb, wa, name):
+    rgb = np.asarray(wrgb * 255, dtype=np.uint8)
+    a_ = wa[:, :, 0] * 255
+    a = np.asarray(a_, dtype=np.uint8)
+    irgb = Image.fromarray(rgb, mode="RGB")  # rgb通道
+    alpha = Image.fromarray(a, mode="L")  # a通道
+    irgb.putalpha(alpha)  # 转换为 rgba 整图
+    irgb.save("save/logo_" + name + ".png")
+    irgb.show()
+
+def train_logo():
+    # 准备一波样本，x为带水印的mat，y为不带水印的mat
+    dpath = "datas/nologo"  # 数据集 dir
+    # xs, ys = loadDataset(dpath)  # 从图片dir加载数据集
+    xs, ys = load_logoDataset(dpath, (373, 54))  # 从图片dir加载数据集
+    print(np.shape(xs), np.shape(ys))
+
+    X = tf.placeholder(tf.float32, name='X')
+    Y = tf.placeholder(tf.float32, name='Y')
+
+    # val_rgb = np.ones((54, 373, 3)) * 0.5
+    # val_a = np.zeros((54, 373)) * 0.5
+    # W_rgb = tf.Variable(tf.constant_initializer(val_rgb), name='weight_rgb')
+    # W_a = tf.Variable(tf.constant_initializer(val_a), name='weight_a')
+
+    # W_rgb = tf.Variable(tf.fill([54, 373, 3], 0.4), name='weight_rgb')  # 199,16,34, 77
+    # W_a = tf.Variable(tf.fill([54, 373, 1], 0.4), name='weight_a')
+
+    # l2 正则化 正确使用姿势 [在定义权重初始化 之前定义 正则化], 若用正则化则打开 wd
+    initial_rgb = tf.fill([54, 373, 3], 0.4)
+    initial_a = tf.fill([54, 373, 1], 0.4)
+    weight_decay_rgb = tf.multiply(tf.nn.l2_loss(initial_rgb), 0.04, name='weight_loss_rgb')  # wd 惩罚因子 0.04
+    weight_decay_a = tf.multiply(tf.nn.l2_loss(initial_a), 0.04, name='weight_loss_a')
+    tf.add_to_collection('losses', weight_decay_rgb)
+    tf.add_to_collection('losses', weight_decay_a)
+    W_rgb = tf.Variable(initial_rgb, name='weight_rgb')
+    W_a = tf.Variable(initial_a, name='weight_a')
+
+    # 均值0.5,标差1分布   minval=0, maxval=1
+    # W_rgb = tf.Variable(tf.truncated_normal([54, 373, 3], mean=0.4, stddev=0.25), name='weight_rgb')
+    # W_a = tf.Variable(tf.truncated_normal([54, 373, 1], mean=0.4, stddev=0.25), name='weight_a')  # 非0则255
+
+    # 定义后向运算：y = w（x）
+    print("定义后向运算：y = w（x）")
+    # print(W_rgb.shape, W_a.shape)
+    # print(tf.multiply(tf.tile(W_a, (1, 1, 3)), W_rgb).shape)
+    factor1 = tf.subtract(X, tf.multiply(tf.tile(W_a, (1, 1, 3)), W_rgb), name=None)   # 减法
+    factor2 = tf.subtract(tf.ones([54, 373, 1], tf.float32), W_a, name=None)   # 减法
+    Y_pred = tf.divide(factor1, factor2, name=None)
+
+    # 定义损失计算
+    print("定义损失计算与sgd优化")
+    points = 54 * 373
+    # loss = tf.reduce_sum(tf.pow(Y_pred - Y, 2))/points  # 每个点位差值平方的 均值： 定义loss值  MSE - ls loss
+    loss = tf.reduce_sum(tf.abs(Y_pred - Y))/points  # l1 loss
+    # learning_rate = 0.001
+    # learning_rate = 0.1
+    # learning_rate = 0.25
+    learning_rate = 0.5
+    # learning_rate = 0.75
+    # learning_rate = 1
+    optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss)  # 定义 SGD 随机梯度下降
+    # optimizer = tf.train.AdamOptimizer(learning_rate).minimize(loss)  # adam 优化算法
+    # optimizer = tf.train.AdamOptimizer(1e-3).minimize(loss)
+    # 学习率越小，越能接近极值；学习率过大，找不到极值
+
+    # arg_version = "c4l2gd50w"
+    arg_version = "x_c4l1sl2gd50w"
+    n_samples = xs.shape[0]  # 训练样本总数
+    init = tf.global_variables_initializer()  # 开始训练
+    with tf.Session() as sess:
+        sess.run(init)  # 初始化所有变量
+        # 将搜集的变量写入事件文件，提供给Tensorboard使用
+        writer = tf.summary.FileWriter('./graphs/logo_reg', sess.graph)
+
+        # 训练模型: steps
+        steps = 1000
+        iloss = {'title': arg_version, 'eps': [], 'loss': [], 'tr_time': 0}
+        t0 = time.perf_counter()
+        for i in range(steps):
+            total_loss = 0  # 设定总共的 损失初始值为0
+            for x, y in zip(xs, ys):  # 遍历每一个样本，进行前后向计算
+                _, l = sess.run([optimizer, loss], feed_dict={X: x, Y: y})
+                total_loss += l  # 计算所有的损失值进行叠加  # 叠加样本集的损失值
+
+            if i % 100 == 0 or i == steps-1:
+            # if i % 2 == 0 or i == steps-1:
+                mse = total_loss/n_samples
+                iloss['eps'].append(i)
+                iloss['loss'].append(mse)
+                print('Epoch {0}: {1}'.format(i, mse))
+
+                wrgb, wa = sess.run([W_rgb, W_a])  # 取出w值
+                generate_png_w(wrgb, wa, arg_version + "_" + str(i))  # 生成与显示 当前logo学习效果
+
+        t1 = time.perf_counter()
+        print("train time waste: ", t1 - t0)
+        writer.close()  # 关闭writer
+        W_rgb, W_a = sess.run([W_rgb, W_a])  # 取出w值
+
+    # ndarry 数据与格式转换
+    tr_version = arg_version + "_" + getTimeVersion()
+    generate_png_w(W_rgb, W_a, tr_version)
+
+    # 绘制+保存 loss 曲线
+    iloss['title'] = arg_version
+    iloss['tr_time'] = t1 - t0
+    plot_losscurve([iloss], tr_version)
+
+    """
+    优化方向：
+        数据集扩充：补充更多的数据集；
+        采用更好优化算法：sgd，adam；
+        通过读入图像的初始化权重；（可以不必，纯学习效果不错）
+        注意处理梯度消失问题，或者计算边界值问题 (麻点是如何产生的？)
+            发现麻点跟w初始化值有关，当初始值设为0.4时麻点消失；
+            也就是 a值为 0或1 都可以使得损失值的降低，就看a值的一个初始方向是啥？最后收敛就是啥
+        正则化：
+        mse loss优化 ==》
+            SSIM（结构相似）损失
+            PSNR(Peak Signal-to-Noise Ratio) 峰值信噪比
+            MS-SSIM+L1 损失函数是最好的
+
+        增加一个logo分类：
+            构造训练的 x-patchs 和 y-1/0；
+            对所有的样本点进行一个hog特征点提取，在进行svm分类；
+
+        训练可视化：如何在训练的epoch过程中将参数获取
+
+    r0.5 + i0.5 + gd + 1000ep => 0.0004, 0.0011
+    r0.5 + ad + 10000ep => 0.22196987484182631
+     0.0004211
+    """
+if __name__ == '__main__':
+    train_logo()
+
+    # tensor_test()
+
+    # loss 曲线绘制测试
+    # tloss1 = {
+    #     'title': 'my_5eps',
+    #     'eps': [1, 2, 3, 4, 5],
+    #     'loss': [0.1, 0.2, 0.3, 0.4, 0.5]
+    # }
+    # tloss2 = {
+    #     'title': 'my_5eps',
+    #     'eps': [1, 2, 3, 4, 5],
+    #     'loss': [0.4, 0.3, 0.2, 0.6, 0.4]
+    # }
+    # plot_losscurve([tloss1], "test")
+
+# -*- coding: utf-8 -*-
+# @Author  : guowei.yy@cai-inc.com
+# @File    : LGR_v2.py
+# 第二版模型训练脚本： 增加了多种参数调优方案
+import numpy as np
+import tensorflow as tf
+from PIL import Image
+import cv2
+import time
+import matplotlib.pyplot as plt
+from sklearn import svm
+import joblib
+import tornado.ioloop
+import tornado.web
+import io
+import os
+from urllib.request import urlopen
+from lgr import loadDataset, load_logoDataset, load_gray_logoDataset, \
+    load_delogo_dataset, load_delogo_data
+from logo_test import logo_clean
+
+# 提取图像hog特征向量  (54, 373, 3)
+def hog_extractor(hog, img):  # 计算hog特征
+    winStride = (8, 8)
+    padding = (8, 8)
+    # print("提取前矩阵维度：", np.shape(img))  # (54, 373, 3)
+    hog_vector = hog.compute(img, winStride, padding).reshape((-1,))
+    return hog_vector
+
+def getTimeVersion():
+    stime = time.strftime('%H%M', time.localtime(time.time()))
+    return stime
+
+def tensor_test():
+    v = tf.truncated_normal([10, 10], mean=0.5, stddev=0.25)
+    sess = tf.Session()
+    print(sess.run(v))
+    sess.close()
+
+def plot_losscurve(lossdicts, sav):
+    fig = plt.figure(figsize=(7, 5))  # figsize是图片的大小`
+    ax1 = fig.add_subplot(1, 1, 1)  # ax1是子图的名字`
+    ax1.set_title('loss curve figs')
+    ax1.set_xlabel('epoch')
+    ax1.set_ylabel('training loss')
+
+    print("plot begain")
+    for dic in lossdicts:  # epoch + val
+        eps = dic['eps']
+        lss = dic['loss']
+        ax1.plot(eps, lss, label=dic['title'])  # 线型，颜色，标记，名称
+
+    plt.legend()
+    plt.savefig("loss_" + sav + ".png")
+    plt.show()
+    print("plot over")
+
+def train_logo():
+    # 准备一波样本，x为带水印的mat，y为不带水印的mat
+    dpath = "nologo"  # 数据集 dir
+    # xs, ys = loadDataset(dpath)  # 从图片dir加载数据集
+    xs, ys = load_logoDataset(dpath, (373, 54))  # 从图片dir加载数据集
+    print(np.shape(xs), np.shape(ys))
+
+    X = tf.placeholder(tf.float32, name='X')
+    Y = tf.placeholder(tf.float32, name='Y')
+
+    # val_rgb = np.ones((54, 373, 3)) * 0.5
+    # val_a = np.zeros((54, 373)) * 0.5
+    # W_rgb = tf.Variable(tf.constant_initializer(val_rgb), name='weight_rgb')
+    # W_a = tf.Variable(tf.constant_initializer(val_a), name='weight_a')
+
+    # W_rgb = tf.Variable(tf.fill([54, 373, 3], 0.9), name='weight_rgb')  # 199,16,34, 77
+    # W_a = tf.Variable(tf.fill([54, 373, 1], 0.9), name='weight_a')
+
+    # l2 正则化 正确使用姿势 [在定义权重初始化 之前定义 正则化], 若用正则化则打开 wd
+    initial_rgb = tf.fill([54, 373, 3], 0.4)
+    initial_a = tf.fill([54, 373, 1], 0.4)
+    weight_decay_rgb = tf.multiply(tf.nn.l2_loss(initial_rgb), 0.04, name='weight_loss_rgb')  # wd 惩罚因子 0.04
+    weight_decay_a = tf.multiply(tf.nn.l2_loss(initial_a), 0.04, name='weight_loss_a')
+    tf.add_to_collection('losses', weight_decay_rgb)
+    tf.add_to_collection('losses', weight_decay_a)
+    W_rgb = tf.Variable(initial_rgb, name='weight_rgb')
+    W_a = tf.Variable(initial_a, name='weight_a')
+
+    # 均值0.5,标差1分布   minval=0, maxval=1
+    # W_rgb = tf.Variable(tf.truncated_normal([54, 373, 3], mean=0.4, stddev=0.25), name='weight_rgb')
+    # W_a = tf.Variable(tf.truncated_normal([54, 373, 1], mean=0.4, stddev=0.25), name='weight_a')  # 非0则255
+
+    # 定义后向运算：y = w（x）
+    print("定义后向运算：y = w（x）")
+    # print(W_rgb.shape, W_a.shape)
+    # print(tf.multiply(tf.tile(W_a, (1, 1, 3)), W_rgb).shape)
+    factor1 = tf.subtract(X, tf.multiply(tf.tile(W_a, (1, 1, 3)), W_rgb), name=None)   # 减法
+    factor2 = tf.subtract(tf.ones([54, 373, 1], tf.float32), W_a, name=None)   # 减法
+    Y_pred = tf.divide(factor1, factor2, name=None)
+
+    # 定义损失计算
+    print("定义损失计算与sgd优化")
+    points = 54 * 373
+    loss = tf.reduce_sum(tf.pow(Y_pred - Y, 2))/points  # 每个点位差值平方的 均值： 定义loss值
+    # learning_rate = 0.001
+    learning_rate = 0.1
+    # learning_rate = 0.25
+    # learning_rate = 0.5
+    # learning_rate = 0.75
+    # learning_rate = 1
+    optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss)  # 定义 SGD 随机梯度下降
+    # optimizer = tf.train.AdamOptimizer(learning_rate).minimize(loss)  # adam 优化算法
+    # optimizer = tf.train.AdamOptimizer(1e-3).minimize(loss)
+    # 学习率越小，越能接近极值；学习率过大，找不到极值
+
+    arg_version = "c4l2gd01w"
+    n_samples = xs.shape[0]  # 训练样本总数
+    init = tf.global_variables_initializer()  # 开始训练
+    with tf.Session() as sess:
+        sess.run(init)  # 初始化所有变量
+        # 将搜集的变量写入事件文件，提供给Tensorboard使用
+        writer = tf.summary.FileWriter('./graphs/logo_reg', sess.graph)
+
+        # 训练模型: steps
+        steps = 10000
+        iloss = {'title': arg_version, 'eps': [], 'loss': [], 'tr_time': 0}
+        t0 = time.perf_counter()
+        for i in range(steps):
+            total_loss = 0  # 设定总共的 损失初始值为0
+            for x, y in zip(xs, ys):  # 遍历每一个样本，进行前后向计算
+                _, l = sess.run([optimizer, loss], feed_dict={X: x, Y: y})
+                total_loss += l  # 计算所有的损失值进行叠加  # 叠加样本集的损失值
+
+            if i % 100 == 0 or i == steps-1:
+                mse = total_loss/n_samples
+                iloss['eps'].append(i)
+                iloss['loss'].append(mse)
+                print('Epoch {0}: {1}'.format(i, mse))
+
+        t1 = time.perf_counter()
+        print("train time waste: ", t1 - t0)
+        writer.close()  # 关闭writer
+        W_rgb, W_a = sess.run([W_rgb, W_a])  # 取出w值
+
+    # ndarry 数据与格式转换
+    rgb = np.asarray(W_rgb * 255, dtype=np.uint8)
+    a_ = W_a[:, :, 0] * 255
+    a = np.asarray(a_, dtype=np.uint8)
+    irgb = Image.fromarray(rgb, mode="RGB")  # rgb通道
+    alpha = Image.fromarray(a, mode="L")  # a通道
+    irgb.putalpha(alpha)  # 转换为 rgba 整图
+    irgb.show()
+
+    tr_version = arg_version + "_" + getTimeVersion()
+    irgb.save("logo_" + tr_version + ".png")
+
+    # 绘制+保存 loss 曲线
+    iloss['title'] = arg_version
+    iloss['tr_time'] = t1 - t0
+    plot_losscurve([iloss], tr_version)
+
+
+def get_hog():
+    # hog 提取参数  # 128, 64, 8, 16
+    winSize = (32, 32)
+    blockSize = (16, 16)
+    blockStride = (4, 4)
+    cellSize = (8, 8)
+    nbins = 9
+    # 定义对象hog，同时输入定义的参数，剩下的默认即可
+    hog = cv2.HOGDescriptor(winSize, blockSize, blockStride, cellSize, nbins)
+    return hog
+
+def get_model_metric(clf, X, Y):
+    from sklearn.metrics import confusion_matrix, roc_auc_score
+    y_pred = clf.predict(X)
+    tn, fp, fn, tp = confusion_matrix(Y, y_pred).ravel()  # 混淆矩阵
+    n = tn + fp + fn + tp
+    acc, prec = round((tn + tp) / n * 1.0, 8), round(tp / (tp + fn) * 1.0, 8)
+    auc = round(roc_auc_score(Y, y_pred), 8)
+    metrics = {"acc": acc, "prec": prec, "auc": auc}
+    print(metrics)
+    return metrics
+
+def model2pkl(clf, mname):
+    joblib.dump(clf, mname + ".pkl")
+    print("测试模型持久化与加载。。。")
+    time.sleep(5)
+    iclf = joblib.load("logo_svm_cls.pkl")
+    # print("testing svm logo 分类结果：", iclf.predict(X))
+
+def hogtest():
+    dpath = "datas/nologo"  # 数据集 dir
+    xs1, xs0 = load_gray_logoDataset(dpath, (373, 54))  # 从图片dir加载数据集
+    hog = get_hog()
+    X = []
+    Y = []
+    for xm in xs1:  # 由于xs全是 wxhx3 通道的map，需要转成灰度图
+        x_hogs = hog_extractor(hog, xm)
+        X.append(x_hogs)
+        Y.append(1)  # 有logo
+
+    for xm in xs0:  # 由于xs全是 wxhx3 通道的map，需要转成灰度图
+        x_hogs = hog_extractor(hog, xm)
+        X.append(x_hogs)
+        Y.append(0)  # 无logo
+
+    print("logo分类数据集：", np.shape(X), np.shape(Y))  # 202500维向量
+    # (112, 202500) (112,)
+
+    isvm = svm.SVC(gamma='scale')
+    isvm.fit(X, Y)
+    """ # SVC参数:
+    C=1.0, cache_size=200, class_weight=None, coef0=0.0,
+    decision_function_shape='ovr', degree=3, gamma='scale', kernel='rbf',
+    max_iter=-1, probability=False, random_state=None, shrinking=True,
+    tol=0.001, verbose=False
+    """
+    from sklearn.linear_model import LogisticRegression
+    lr = LogisticRegression()
+    lr.fit(X, Y)
+
+    print('svm')
+    get_model_metric(isvm, X, Y)
+    print('lr')
+    get_model_metric(lr, X, Y)
+    print('lr预测结果：', lr.predict(X))
+
+    model2pkl(lr, 'lr_logo_cls')
+    print('over.')
+
+# def logo_cls2del_test(testp):
+#     ts = load_delogo_dataset(testp, )  # 从图片dir加载数据
+#     hog = get_hog()
+#     T = []
+
+def hog_svm_logo_cls_rm():
+    # tlogos, imgs = load_delogo_dataset("tests", (373, 54))  # 从图片dir加载数据
+    tlogos, imgs = load_delogo_dataset("cls_rm_tests", (373, 54))  # 从图片dir加载数据
+    hog = get_hog()
+    svm = joblib.load("save/logo_svm_cls.pkl")
+    pngp = "ilogor.png"
+    for tlogo, img in zip(tlogos, imgs):
+        hogs = hog_extractor(hog, tlogo)  # hog 特征提取
+        cls = svm.predict([hogs])  # svm 分类器
+        print("svm 分类：", cls)
+        if cls[0] == 1:
+            print("识别到logo水印，消去水印...")
+            logo_clean(img, pngp, savp="xout")  # 去核心水印
+        else:
+            Image.open(img).show()
+            print("没有logo水印，pass")
+    print("over!")
+
+def img_logo_rm(imgp, pname):
+    pngp = "ilogor.png"
+    ilogo, img = load_delogo_data(imgp, (373, 54))
+    svm = joblib.load("save/logo_svm_cls.pkl")
+    hogs = hog_extractor(get_hog(), ilogo)  # hog 特征提取
+    cls = svm.predict([hogs])  # svm 分类器
+    print("svm 分类：", cls)
+    if cls[0] == 1:
+        print("识别到logo水印，消去水印...")
+        img_rm = logo_clean(imgp, pngp, savp="svc_temp", pname=pname)  # 去核心水印
+    else:
+        Image.open(imgp).show()
+        print("没有logo水印，pass")
+        img_rm = ""
+    return img_rm
+
+root_path = "/Users/zcy/PycharmProjects/_sy_/watermark/logo_regression/svc_temp"
+class MainHandler(tornado.web.RequestHandler):
+    def post(self):
+        """post请求"""
+        self.get()
+
+    def get(self):
+        """get请求"""
+        t1 = time.perf_counter()
+        pic = self.get_argument('picuri')
+        pname = pic.rsplit('/', 1)[1]
+        suffix = pname.split('.', 1)[1]
+        if suffix in ['jpg', 'jpeg', 'png', 'bmp', 'gif'] and pic.startswith('http'):
+            image_bytes = urlopen(pic).read()
+            pic = io.BytesIO(image_bytes)
+        img_rm = img_logo_rm(pic, pname)  # 分类 与 消去
+        t2 = time.perf_counter()
+        print("请求处理耗时: %s sec." % (t2 - t1))
+
+        # "<img src='" + root_path + "/1622_comp.jpg'><br/>" +
+        # rst = "<a href='/downfile?bpath=dst&fname=1622_rm.jpg'>消去图像下载</a>"
+        rst = "<a href='/downfile?bpath=dst&fname=" + img_rm + "'>消去图像下载</a>"
+        self.write(rst)
+
+class DownloadFileHandler(tornado.web.RequestHandler):
+    def get(self):
+        print("demo: 127.0.0.1:10935/downfile?bpath=dst&fname=1622_rm.jpg")
+        self.post()
+
+    def post(self):
+        """下载文件: 127.0.0.1:10934/downfile?filename=readme.txt"""
+        bpath = ""
+        if "bpath" in self.request.arguments:
+            bpath = self.get_argument('bpath')
+        fname = self.get_argument('fname')
+
+        self.set_header('Content-Type', 'application/octet-stream')
+        self.set_header('Content-Disposition', 'attachment; filename=' + fname)
+        buf_size = 4096
+        dpath = os.path.join(root_path + "/" + bpath, fname)
+        print("下载地址：", dpath)
+        with open(dpath, 'rb') as f:
+            while True:
+                data = f.read(buf_size)
+                if not data:
+                    break
+                self.write(data)
+        self.finish()
+
+def logo_rm_websvc():
+    application = tornado.web.Application([
+        (r"/rmlogo", MainHandler),
+        (r"/downfile", DownloadFileHandler),
+    ])
+    port = 10935
+    application.listen(port)
+    print(str(port) + "/rmlogo svc ready...")
+    tornado.ioloop.IOLoop.instance().start()
+
+if __name__ == '__main__':
+    train_logo()
+
+    # hogtest()  # hog 特征提取 + svm分类器
+
+    # tensor_test()
+    # hog_svm_logo_cls_rm()
+
+    # imgp = "cls_rm_tests/t8.jpg"
+    # img_logo_rm(imgp)
+
+    # loss 曲线绘制测试
+    # tloss1 = {
+    #     'title': 'my_5eps',
+    #     'eps': [1, 2, 3, 4, 5],
+    #     'loss': [0.1, 0.2, 0.3, 0.4, 0.5]
+    # }
+    # tloss2 = {
+    #     'title': 'my_5eps',
+    #     'eps': [1, 2, 3, 4, 5],
+    #     'loss': [0.4, 0.3, 0.2, 0.6, 0.4]
+    # }
+    # plot_losscurve([tloss1], "test")
+
+    # 去水印的 web 服务
+    # logo_rm_websvc()
+
+"""
+127.0.0.1:10935/rmlogo?picuri=
+https://img14.360buyimg.com/n0/jfs/t1/115934/38/18280/237070/5f661f3aE050bfd8c/5ddcac4e96da4828.jpg
+"""
+
+# -*- coding: utf-8 -*-
+# @Author  : guowei.yy@cai-inc.com
+# @File    : logo_test.py
+# 针对训练好的模型，产出的水印模板进行计算
+# coding=utf-8
+import cv2
+import random
+import numpy as np
+from PIL import Image, ImageFilter
+import os
+import time
+
+
+def getTimeVersion():
+    stime = time.strftime('%H%M', time.localtime(time.time()))
+    return stime
+
+
+def Aget_initpix(vsrc, valp, vlogo, prt=False):
+    if valp == 1:
+        rst = vlogo
+    elif valp == 0:
+        rst = vsrc
+    else:
+        rst = ((vsrc - valp * vlogo)) / (1 - valp)
+    # 在纯背景处，希望过渡区 得到更大的像素值
+    if rst < 0:
+        rst = 0
+    if rst > 255:
+        rst = 255
+    return rst
+
+def get_logobypath(imgp, pngp):
+    img = Image.open(imgp)
+    image = img.copy()
+
+    # print("logo地址:", pngp)
+    watermark = Image.open(pngp)  # 水印路径，加在下侧
+
+    if watermark.mode != 'RGBA':
+        alpha = Image.new('L', watermark.size, 255)  # 创建A通道  L表示8位灰度图
+        watermark.putalpha(alpha)  # pil RGB 如何转 BGR
+
+    # 获取正中位置
+    bw, bh = img.size  # shape的宽高位置和pil的有区别！！！
+    sw, sh = watermark.size
+    iw = int((bw - sw) / 2)
+    ih = int((bh - sh) / 2)
+
+    TRANSPARENCY = 100
+    paste_mask = watermark.split()[3].point(lambda i: i * TRANSPARENCY / 100.)  # 第四通道
+    image.paste(watermark, (iw, ih + 60), mask=paste_mask)  # pm是wm本身第四通道的像素值
+    return image, watermark, (iw, ih), paste_mask
+
+
+def pix_logo_rm(src, wm, local, pmask):
+    sw, sh = local
+    src = np.array(src)  # 编程int类型，使得不会导致计算值溢出
+    wm = np.array(wm)
+    pmask = np.array(pmask)
+    th, tw, tc = np.shape(src)
+
+    timg = src.copy()  # 拷贝一个map
+    h, w = pmask.shape  # 要遍历的宽高： 53, 371
+    for i in range(h):
+        for j in range(w):
+            x, y = j+sw, i+sh  # 求操作图上的坐标
+            if x < 0 or x >= tw or y < 0 or y >= th:
+                continue
+            for ci in range(3):
+                vsrc = timg[y][x][ci]
+                valp = pmask[i][j] / 255
+                vlogo = wm[i][j][ci]
+                # timg[y][x][ci] = int(get_initpix(vsrc, valp, vlogo))
+
+                timg[y][x][ci] = int(Aget_initpix(vsrc, valp, vlogo, prt=True))
+
+    # 至此，整个 timg 计算完毕
+    timg_ = np.asarray(timg, dtype=np.uint8)
+    ttimg = Image.fromarray(timg_).convert(mode="RGB")
+    return np.array(ttimg)
+
+
+def logo_clean_yy(srcp, pngp, savp):
+    print("testing: ", srcp)
+    ilogo = Image.open(srcp)  # 读入的图片
+
+    # 2、采用逆向计算方式W， 先通过对原图与系统已有的logo模板，获取一些参数
+    slogo, wm, (iw, ih), pmask = get_logobypath(srcp, pngp)  # 获取计算资源, 获取双水印
+    dst_ = pix_logo_rm(slogo, wm, (iw, ih), pmask)  # 除原生水印  214 373
+    dst = pix_logo_rm(Image.fromarray(dst_), wm, (iw, ih+60), pmask)  # 除下方60pix人工水印
+
+    if not os.path.exists(savp):
+        os.makedirs(savp)
+    print("保存位置：", savp)
+
+    # 保存结果图
+    spic = srcp.rsplit('/', 1)[1].split('.')  # name + subfix
+
+    w, h = ilogo.size
+    out_image = np.zeros((h, w * 3, 3), dtype=np.uint8)
+    out_image[:, :w] = ilogo  # 原图
+    out_image[:, w:w * 2] = slogo  # 手工图 + logo 与原图对比
+    out_image[:, w * 2:] = Image.fromarray(dst)
+
+    # irsavep = savp + "/" + spic[0] + "_dlg." + spic[1]
+    # slogo.save(irsavep)  # 保存双水印图
+
+    dsavep = savp + "/dst/" + spic[0] + "_rm." + spic[1]
+    idst = Image.fromarray(dst)
+    idst.save(dsavep)
+
+    rsavep = savp + "/" + spic[0] + "_comp." + spic[1]
+    iout = Image.fromarray(out_image)
+    iout.save(rsavep)
+    iout.show()
+
+
+def logo_clean(srcp, pngp, savp, pname=None):
+    ilogo = Image.open(srcp)  # 读入的图片
+
+    # 2、采用逆向计算方式W， 先通过对原图与系统已有的logo模板，获取一些参数
+    _, wm, (iw, ih), pmask = get_logobypath(srcp, pngp)  # 获取计算资源
+    dst = pix_logo_rm(ilogo, wm, (iw, ih), pmask)  # 除原生水印  214 373
+
+    if not os.path.exists(savp + "/dst"):
+        os.makedirs(savp + "/dst")
+
+    # 保存结果图  此处srcp不是字符串而是 图像IO对象
+    # spic = srcp.rsplit('/', 1)[1].split('.')  # name + subfix
+    spic = srcp.rsplit('/', 1)[1].split('.') \
+        if pname == None else pname.split(".")  # 传输了 suffix 说明是web请求而非本地
+    w, h = ilogo.size
+    out_image = np.zeros((h, w * 2, 3), dtype=np.uint8)
+    out_image[:, :w] = ilogo  # 原图
+    out_image[:, w:] = Image.fromarray(dst)
+    dsavep = savp + "/dst/" + spic[0] + "_rm." + spic[1]
+    idst = Image.fromarray(dst)
+    idst.save(dsavep)
+    rsavep = savp + "/" + spic[0] + "_comp." + spic[1]
+    iout = Image.fromarray(out_image)
+    iout.save(rsavep)
+    print("保存位置：", dsavep, " & ", rsavep)
+    iout.show()
+    img_rm = spic[0] + "_rm." + spic[1]
+    return img_rm
+
+def dir_logorm_test(dir, pngp):
+    flist = os.listdir(dir)
+    for pp in flist:
+        if pp.endswith('.jpg'):
+            logo_clean_yy(
+                srcp=dir + pp,
+                pngp=pngp,
+                savp="test_out"
+            )
+    print("Over!!!")
+
+if __name__ == '__main__':
+    # idir = "tests/"
+    idir = "../_rev_/"
+    # dir_logorm_test(idir, pngp="mylogo_gd50w.png")
+    dir_logorm_test(idir, pngp="ilogor.png")  # a微调
+    # dir_logorm_test(idir, pngp="mylogo_c4gd50k_1124.png")  # 0.4 训练
+    # dir_logorm_test(idir, pngp="logo_c4l2gd01w_2020.png")  # 0.4 训练
+    # logo_clean_yy(srcp=dir + pp, pngp=pngp, savp="test_out")
+
+# -*- coding: utf-8 -*-
+# @Author  : guowei.yy@cai-inc.com
+# @File    : local_deal_ct.py
+# 关于图像滤波、处理、像素计算等工具方法
+# 371x53 像素转换为 374x54
+from PIL import Image
+import numpy as np
+import cv2
+
+def otest():
+    jpic = "370x52.png"
+    jp = Image.open(jpic)
+    znp = np.zeros((54, 374, 4), dtype=np.uint8)
+    iz = Image.fromarray(znp)
+    iz.paste(jp, (2, 1))
+    iz.save("_374x54.png")
+    iz.show()
+
+# 那666的图，修改颜色值
+# 新抠图的 alpha通道
+def logo_prod(jpic):
+    lg_lk = Image.open(jpic)
+    nlg = np.asarray(lg_lk, dtype=np.uint8)
+    w, h = lg_lk.size
+
+    pnlogo = nlg.copy()
+    for i in range(h):
+        for j in range(w):  # 因为666的alpha通道没问题77（0.3），现在微调颜色值
+            a = nlg[i][j][3]
+            pnlogo[i][j] = np.array([199, 16, 34, a])  # 感觉还有点红色  # 192不行，
+            # pnlogo[i][j][0] * 194
+            # 191,16,36
+
+    plogo = Image.fromarray(pnlogo)
+    plogo.save("199_16_34.png")
+    print("over！")
+
+def edit_al_png(apng, al):
+    print("根据新生alpha通道制作logo！")
+    nlg = apng
+    h, w, c = np.shape(apng)
+
+    print(np.shape(nlg), np.shape(al))
+    pnlogo = nlg.copy()
+    for i in range(h):
+        for j in range(w):  # 因为666的alpha通道没问题77（0.3），现在微调颜色值
+            r, g, b = tuple(nlg[i][j][:3])
+            a = al[i][j]
+            pnlogo[i][j] = np.array([r, g, b, a])  # 感觉还有点红色  # 192不行，
+
+    plogo = Image.fromarray(pnlogo)
+    plogo.save("lkp_al_merge.png")
+
+def edit_al_ft_png(apng, al, ft):
+    print("根据新生alpha通道制作logo！")
+    nlg = apng
+    h, w, c = np.shape(apng)
+
+    print(np.shape(nlg), np.shape(al))
+    pnlogo = nlg.copy()
+    for i in range(h):
+        for j in range(w):  # 因为666的alpha通道没问题77（0.3），现在微调颜色值
+            r, g, b = tuple(nlg[i][j][:3])
+            a = al[i][j] if ft[i][j]>0 else 0
+            pnlogo[i][j] = np.array([r, g, b, a])  # 感觉还有点红色  # 192不行，
+
+    plogo = Image.fromarray(pnlogo)
+    plogo.save("lkp_af_merge.png")
+
+def prt_Np(arr, text="打印np-arr：", ):
+    print(text)
+    h, w = np.shape(arr)
+    for i in range(h):
+        linel = [str(pix) for pix in arr[i]]
+        lstr = ' '.join(linel)
+        print(lstr)
+
+def a_outer_edt(slogo, adist, plogo, mode="newr"):
+    print("修改外围a值：", np.shape(slogo), np.shape(plogo))
+    # 按照显示像素值和 logo像素值，反求其a值
+    new_logo = slogo.copy()
+    h, w, c = np.shape(slogo)
+    for i in range(h):
+        for j in range(w):
+            pr, pg, pb = tuple(plogo[i][j][:3])  # 白底 + logo = 显示图
+            lr, lg, lb, la = tuple(slogo[i][j])  # 原始纯logo
+            sr, sg, sb = 255, 255, 255  # 白底
+            if adist[i][j] == 1:
+                # new_ar = int((pr - sr) * 255/(lr - sr))  # 仅按照红色通道进行推算
+                new_ag = int((pg - sg) * 255/(lg - sg))  # 仅按照g通道进行推算
+                new_ab = int((pb - sb) * 255/(lb - sb))  # 仅按照b通道进行推算
+                # print(pr, sr, lr, new_a_i)
+                # if new_a_i > 77: new_a_i = 77
+                # new_a = int(np.mean([new_ar, new_ag, new_ab]))
+                new_a = int(np.mean([new_ag, new_ab]))
+                # 感觉 r在变化：1。采用rgb均值，2。采用bg均值，3。采用gb均值+r变化
+                # new_a =
+                # 采用gb的a均值，并通过a计算r的变化
+                new_r = lr
+                if new_a > 0:
+                    new_alp = new_a/255
+                    new_r = int((pr - (1-new_alp)*sr)/new_alp)  # 反向计算alp
+                    # if new_r > 255: new_r = 255
+                    if new_r > 199: new_r = 199
+                    # print(new_r)
+
+                # 最后一行变成0 [因为c字母最下变有一行多余的框架]
+                # print(lr, new_r, pr, new_a)
+                # new_logo[i][j] = np.array([r, g, b, new_a])
+                # new_logo[i][j] = np.array([new_r, lg, lb, new_a])
+                # new_logo[i][j] = np.array([pr, lg, lb, new_a])  # r 高了会变绿，低了会留红， 中间是199：残留微红
+                # new_logo[i][j] = np.array([lr+10, lg, lb, new_a])  # r 内层浅绿，外层浅红，lr不能变
+                # new_logo[i][j] = np.array([lr, lg, lb, new_a])  # r 内层浅绿，外层浅红，lr不能变
+                # new_logo[i][j] = np.array([lr, lg, lb, new_a])  # 有亮红色 全部191 【内圈】
+                # new_logo[i][j] = np.array([new_r, lg, lb, new_a])  # 细微红边 [外圈]
+                if mode == "newra":  # 外圈
+                    new_logo[i][j] = np.array([new_r, lg, lb, new_a])  # 细微红边 [外圈]
+                elif mode == "old":  # 内圈
+                    # new_logo[i][j] = np.array([new_r, lg, lb, new_a])  # 内圈微微亮红
+                    # new_logo[i][j] = np.array([new_r, lg, lb, la])  # 有亮红色【内圈，白底未去，残留亮红】
+                    new_logo[i][j] = np.array([lr, lg, lb, la])  # 目前最佳效果（内圈未操作）：o字母内圈太亮
+                    # new_logo[i][j] = np.array([lr, lg, lb, new_a])
+                    # 针对o字母，内圈采用 newa+l
+                elif mode == "newr":
+                    new_logo[i][j] = np.array([new_r, lg, lb, la])
+                elif mode == "newa":
+                    new_logo[i][j] = np.array([lr, lg, lb, new_a])
+                else:
+                    print("模式不对！！！")
+
+            # else:  # 非轮廓位
+            #     if i == h - 1:
+            #         new_a = 0
+            #         new_logo[i][j] = np.array([lr, lg, lb, new_a])  # r 内层浅绿，外层浅红，外层a升高
+    prt_Np(new_logo[:, :, 0])
+    # prt_Np(new_logo[:, :, 0])
+    # plogo = Image.fromarray(new_logo)
+    # plogo.save("lkp_tmd3.png")  # o=字母不太行，那就腐蚀两圈
+    return new_logo
+
+def darw_ops_margin(npng, adist1, dcolor, spath):
+    dr, dg, db = dcolor
+    dmat = npng.copy()
+    h, w, c = np.shape(npng)
+    for i in range(h):
+        for j in range(w):
+            if adist1[i][j] > 0 :
+                dmat[i][j] = np.array([dr, dg, db, 255])
+
+    # Image.fromarray(dmat).save("margin_ops.jpg")
+    Image.fromarray(dmat).save(spath)
+
+def erode_oterLayer(picp):
+    # 采用cv2的图像处理 np-arr 腐蚀一下 alpha通道即可
+    # 也可以采用轮廓图源【不可取】
+    png = Image.open(picp)
+    a_mat = np.array(png.split()[3])  # nlog 为
+    # dst_logo = png.copy  # copy当做修改源
+
+    # 全图rgb，外围操作数, 用ftp的外围，且不实用他的a层
+    _, _, nops = deal_wpng2png("alogo.png")  # 根据alogo获取其外轮廓, 再腐蚀
+    # 基于核心膨胀, 除去ft之外
+
+    # a_erd = cv2.erode(RedThresh, kernel)
+    prt_Np(a_mat)
+    print("打印腐蚀后的像素值")
+    kernel = np.ones((3, 3), np.uint8)
+    a_erd_1 = cv2.erode(a_mat, kernel)  # 腐蚀
+    prt_Np(a_erd_1)  # 打印边缘的 alpha 值
+
+    a_erd_2 = cv2.erode(a_erd_1, kernel)  # 腐蚀, 腐蚀a层不对，应该腐蚀
+    prt_Np(a_erd_2)  # 打印边缘的 alpha 值
+    # 在两个图层， 值不相同的地方，采用中值（求和/2）
+    # print("腐蚀+弱化的像素值")
+    # a_e_mean = np.asarray((a_mat + a_erd_1)/2, dtype=np.uint8)
+    # prt_Np(a_e_mean)
+    # 取出要操作的边缘区域： 将原logo-a图，减去腐蚀后的a图，即边缘的点位集合
+    # 对于这些点位集合分别根据 0l显示值 与像素值 反推其 a值，替换到 logo-a图的 a涂层上
+    # 腐蚀层，即两图a值不想等的区域
+    # adist = a_mat - a_erd_1  # 01 mat
+    # adist[adist != 0] = 1  # 腐蚀的两圈
+    a_mat[a_mat > 0] = 1
+    a_erd_1[a_erd_1 > 0] = 1
+    adist1 = a_mat - a_erd_1
+    prt_Np(adist1)  # 腐蚀的一圈 (第一圈)
+
+    a_erd_2[a_erd_2 > 0] = 1
+    adist2 = a_mat - a_erd_2
+    prt_Np(adist2)  # 腐蚀的两圈
+    adist_2 = adist2 - adist1
+    # adist_2[:, :118] = 0
+    # adist_2[:, 170:] = 0
+    # adist1[:, 118:170] = 0
+    prt_Np(adist_2, "腐蚀的第2圈")  # 腐蚀的第2圈, 只有o字母
+
+    # plogo = Image.open("0logo.jpg")
+    plogo = Image.open("alogo.png")  # 经手工优化的 logo显示图
+    npng = np.array(plogo)
+    lprod1 = a_outer_edt(np.array(png), nops, npng, mode="newra")  # input png, edit points, display img
+    lprod2 = a_outer_edt(lprod1, adist_2, npng, mode="old")  # input png, edit points, display img
+
+    # 绘制一下，alogo哪些位置其作用了？
+    darw_ops_margin(npng, nops, (0, 255, 0), "margin1_ops.png")
+    darw_ops_margin(npng, nops, (0, 0, 255), "margin2_ops.png")
+    plogo = Image.fromarray(lprod2)
+    plogo.save("lkp_tmd9.png")  # 腐蚀两圈，外圈newr，内圈oldr
+
+    # ath = a_mat.copy()
+    # ath[ath > 0] = 1
+    # image, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    # 以上处理得到的 alpha层 进行png融合，保存图像
+    # edit_al_png(np.array(png), a_e_mean)
+
+def get_png_merge(ipic, apic):
+    # 采用cv2的图像处理 np-arr 腐蚀一下 alpha通道即可
+    # 也可以采用轮廓图源【不可取】
+    apng = Image.open(apic)
+    a_mat = np.array(apng.split()[3])  # nlog 为
+    prt_Np(a_mat)
+    ipng = Image.open(ipic)
+    edit_al_png(np.array(ipng), a_mat)
+
+def get_png_jpg_merge(ipic, apic, fpic):  # rgb, a, ft
+    # 采用cv2的图像处理 np-arr 腐蚀一下 alpha通道即可
+    # 也可以采用轮廓图源【不可取】
+    apng = Image.open(apic)
+    a_mat = np.array(apng.split()[3])  # nlog 为
+    prt_Np(a_mat)
+    fjpg = Image.open(fpic)
+    f_mat = np.array(fjpg.split()[0])  # nlog 为
+    prt_Np(f_mat)
+    ipng = Image.open(ipic)
+    edit_al_ft_png(np.array(ipng), a_mat, f_mat)
+
+def prt_Npc(arr, text="打印np-arr：", ):
+    print(text)
+    # h, w = np.shape(arr)
+    h, w, c = np.shape(arr)
+    for i in range(h):
+        # linel = [str(pix) for pix in arr[i]]
+        linel = ["(" + ','.join([str(pix[ci]) for ci in range(c)]) + ")" for pix in arr[i]]
+        lstr = ' '.join(linel)
+        print(lstr)
+
+def deal_wpng2png(wpic):
+    wpng = Image.open(wpic)
+    w_mat = np.array(wpng)  # nlog 为
+    h,w,c = np.shape(w_mat)
+    prt_Npc(w_mat)
+    nblk = np.ones((h,w,c), dtype=np.uint8)*255
+    wdst = nblk - w_mat
+    wdstg = wdst[:, :, 1]
+    wdstg[wdstg>0] = 255
+
+    # cv2.imshow("hello", wdstr)
+    # cv2.waitKey()
+    prt_Np(wdstg)
+    wnr = w_mat[:, :, 0]  # 小于等于238的为字体核心
+    wng = w_mat[:, :, 1]  # 小于等于238的为字体核心
+    wnb = w_mat[:, :, 2]  # 小于等于238的为字体核心
+    wnr[wnr > 238] = 0
+    wng[wng > 183] = 0
+    wnb[wnb > 188] = 0
+    wnk = wnr*wng*wnb  # 非0即>0
+    wnk[wnk>0]=255
+    prt_Np(wnk)
+    # ft - ftk = 轮廓
+    ilk = wdstg - wnk
+    prt_Np(ilk)
+
+    # 检测ft的轮廓
+    # cloneimage, contours, hierarchy = cv2.findContours(wdstg, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # contours, hierarchy = cv2.findContours(wdstg, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+    # for i, contour in enumerate(contours):  # [pints]
+    #     print(np.shape(contours))
+    #     cv2.drawContours(w_mat, contours, i, (0, 255, 0), 1)
+    """w_mat
+    # 函数cv2.drawContours(image, contours, contourIdx, color, thickness, lineType, hierarchy, maxLevel, offset)
+    # 第一个参数是一张图片，可以是原图或者其他。
+    # 第二个参数是轮廓，也可以说是cv2.findContours()找出来的点集，一个列表。
+    # 第三个参数是对轮廓（第二个参数）的索引，当需要绘制独立轮廓时很有用，若要全部绘制可设为-1。`
+    # 接下来的参数是轮廓的颜色和厚度
+    """
+    # cv2.imshow("detect contours", w_mat)
+    # cv2.waitKey()
+
+    # 利用ft的外轮廓，a值，制作整张png原图； a：
+    Image.fromarray(wdstg).save("ft.jpg")  # 全字体
+    Image.fromarray(wnr).save("ftk.jpg")  # 下面把字体核心区分开【r通道都等于238，即小于等于238的为字体核心】
+    Image.fromarray(ilk).save("ilk.jpg")  # 下面把字体核心区分开【r通道都等于238，即小于等于238的为字体核心】
+    return wdstg, wnr, ilk   # 0/255
+
+erode_oterLayer("lkp_af_merge.png")
+# l0 = cv2.imread("0logo.jpg")
+# cv2.imshow("hello", l0)
+# cv2.waitKey()
+
+# -*- coding: utf-8 -*-
+# @Author  : guowei.yy@cai-inc.com
+# @File    : cv_slide.py
+# cv滑动窗口测试类
+# coding=utf-8
+import cv2
+d = 0
+color = 0
+space = 0
+
+def change_d(x):
+    blur = cv2.bilateralFilter(img, x, color, space)
+    cv2.imshow("myImg", blur)
+
+def change_color(x):
+    blur = cv2.bilateralFilter(img, d, x, space)
+    cv2.imshow("myImg", blur)
+
+def change_space(x):
+    blur = cv2.bilateralFilter(img, d, color, x)
+    cv2.imshow("myImg", blur)
+
+img = cv2.imread('JD/bird.jpg')
+cv2.namedWindow('myImg')
+cv2.createTrackbar('d', 'myImg', 1, 500, change_d)
+cv2.createTrackbar('color', 'myImg', 1, 500, change_color)
+cv2.createTrackbar('space', 'myImg', 1, 500, change_space)
+
+while True:
+    k = cv2.waitKey(1) & 0xFF
+    if k == 27:
+        break
+    cv2.getTrackbarPos('d', 'myImg')
+    cv2.getTrackbarPos('color', 'myImg')
+    cv2.getTrackbarPos('space', 'myImg')
+
+cv2.destroyAllWindows()
+
+# -*- coding: utf-8 -*-
+# @Author  : guowei.yy@cai-inc.com
+# @File    : cv_solution.py
+# 水印处理在滑动栏上的调试
+import cv2
+import os
+import numpy as np
+from PIL import Image
+import random
+
+def get_src_logo_img(img):  # 传入pil-img
+    image = img.copy()
+    watermark = Image.open("opc/370x52.png")  # 水印路径
+    TRANSPARENCY = 100
+    # image = Image.fromarray(img)
+    if watermark.mode != 'RGBA':
+        alpha = Image.new('L', watermark.size, 255)  # 创建A通道  L表示8位灰度图
+        watermark.putalpha(alpha)  # pil RGB 如何转 BGR
+
+    # 获取正中位置
+    # bh, bw, _ = img.shape  # shape的宽高位置和pil的有区别！！！
+    bw, bh = img.size  # shape的宽高位置和pil的有区别！！！
+    sw, sh = watermark.size
+    iw = int((bw - sw) / 2)
+    ih = int((bh - sh) / 2)
+    print(bw, bh, sw, sh, "==>", iw, ih)
+    paste_mask = watermark.split()[3].point(lambda i: i * TRANSPARENCY / 100.)  # 第四通道
+    # wr, wg, wb, wa = watermark.split()
+    # iwatermark = Image.merge('RGBA', (wg, wb, wr, wa))  # paste之前，水印红蓝反色
+    image.paste(watermark, (iw, ih), mask=paste_mask)
+    return image
+
+def save_sameshape_logo_mask_pic(img, watermark):
+    img = Image.open(img)
+    watermark = Image.open(watermark)
+    # """  # 准备空白，粘贴水印图，并转换为 dip的蒙版图
+    bh, bw, c = np.array(img).shape
+    sw, sh = watermark.size
+    iw = int((bw - sw) / 2)
+    ih = int((bh - sh) / 2)
+    blk = Image.fromarray(np.zeros((bh, bw, c+1), dtype=np.uint8)).convert(mode="RGBA")
+    _, bg, bb, ba = blk.split()  # 粘贴前先分离一下
+    blk.paste(watermark, (iw, ih))  # 粘贴logo
+    # 对blk作处理， 取其红色通道 , blk是img-size，而wm是logo-size, 需要在指定位置paste logo
+    pr_, _, _, _ = blk.split()  # 粘贴后分离
+    pr = np.array(pr_)  # 在阈值化之前，最好进行单通道的膨胀处理！
+    # cv2.merge([pr, pr, pr])
+    # bz_ = Image.fromarray(pr, mode='L')
+    # kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+    # kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
+    # kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (9, 9))
+    # kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (21, 21))
+    dilated = cv2.dilate(pr, kernel)  # 膨胀图像
+    pr = dilated  # 确认生成膨胀的图像
+    # pr = pr  # 原图，不做膨胀
+    pr[pr >= 1] = 255
+    pri = Image.fromarray(pr)
+    print(pri.size, bg.size)
+    rblk = Image.merge("RGBA", (pri, bg, bb, pri))
+
+    # 保存水印图 + 等分辨率 logo图
+    ri = random.randint(0, 100)
+    img.save("save/aha_" + str(ri) + ".png")
+    rblk.save("save/aha_" + str(ri) + "_logo.png")  # , transparency=0
+    # rblk.show()  # 查看蒙版
+
+    # 以上
+    return cv2.cvtColor(np.array(img).astype(np.uint8), cv2.COLOR_RGBA2BGR), \
+           cv2.cvtColor(np.array(rblk).astype(np.uint8), cv2.COLOR_RGBA2GRAY)
+
+def get_water(srcp, maskp, outp):
+    # 黑底白字
+    src = cv2.imread(srcp)  # 默认的彩色图(IMREAD_COLOR)方式读入原始图像
+    # black.jpg
+    mask = cv2.imread(maskp, cv2.IMREAD_GRAYSCALE)  # 灰度图(IMREAD_GRAYSCALE)方式读入水印蒙版图像
+    # 参数：目标修复图像; 蒙版图（定位修复区域）; 选取邻域半径; 修复算法(包括INPAINT_TELEA/INPAINT_NS， 前者算法效果较好)
+    # dst = cv2.inpaint(src, mask, 3, cv2.INPAINT_NS)
+
+    dst = cv2.inpaint(src, mask, 5, cv2.INPAINT_TELEA)  # Unrecognized or unsupported array type in function 'cvGetMat'
+    # cv2.imwrite(outp + '/rst1.jpg', dst)
+
+    cv2.imshow("hi", src)
+    cv2.imshow("fine", mask)
+    cv2.imshow("hello", dst)
+    dstp = "save/" + srcp.rsplit('/', 1)[1].split('.')[0] + "_inp.png"
+    print(dstp)
+    cv2.imwrite(dstp, dst)
+    cv2.waitKey()
+
+def logo_clean_show(srcp):
+    tmplt = "opc/370x52.png"
+    img, imask = save_sameshape_logo_mask_pic(srcp, tmplt)  # 根据任意原图 和一张logo模板，生成该图的对应size的蒙版(cv2)
+    # dst = cv2.inpaint(img, imask, 3, cv2.INPAINT_TELEA)  # src, mask, 邻域半径, 修复方式
+    # dst = cv2.inpaint(img, imask, 3, cv2.INPAINT_NS)  # src, mask, 邻域半径, 修复方式
+    dst = cv2.inpaint(img, imask, 1, cv2.INPAINT_NS)  # src, mask, 邻域半径, 修复方式
+    # dst = cv2.inpaint(img, imask, 5, cv2.INPAINT_TELEA)  # src, mask, 邻域半径, 修复方式
+    # dst = cv2.inpaint(img, imask, 7, cv2.INPAINT_TELEA)  # src, mask, 邻域半径, 修复方式
+    # dst = cv2.inpaint(img, imask, 9, cv2.INPAINT_TELEA)  # src, mask, 邻域半径, 修复方式
+    # dst = cv2.inpaint(img, imask, 11, cv2.INPAINT_TELEA)  # src, mask, 邻域半径, 修复方式
+    # dst = cv2.inpaint(img, imask, 15, cv2.INPAINT_TELEA)  # src, mask, 邻域半径, 修复方式
+    # cv2.imshow("hi", img)
+    # cv2.imshow("fine", imask)
+    # cv2.imshow("hello", dst)
+    # cv2.waitKey()
+    spic = srcp.rsplit('/', 1)[1].split('.')  # name + subfix
+    savep = "JD_out/" + spic[0] + "_rw." + spic[1]
+    print(savep)
+    cv2.imwrite(savep, dst)
+    # idst = Image.fromarray(dst, mode="RGB")
+    # idst.save(savep)
+    # 保存 三位一体 对比图
+    simg = Image.open(srcp)  # 原图
+    slogo = get_src_logo_img(simg)  # jd输入
+    w, h = simg.size
+    out_image = np.zeros((h, w * 3, 3), dtype=np.uint8)
+    out_image[:, :w] = simg
+    out_image[:, w:w * 2] = slogo
+    # out_image[:, w * 2:] = Image.fromarray(dst)  # 红蓝色反
+    b, g, r = cv2.split(dst)
+    idst = cv2.merge([r, g, b])
+    out_image[:, w * 2:] = idst  # 红蓝反色
+    rsavep = "JD_rst/" + spic[0] + "_comp." + spic[1]
+    Image.fromarray(out_image).save(rsavep)
+
+if __name__ == '__main__':
+    # srcp = "clean_test/aha_13.png"
+    # mb = "clean_test/aha_13_logo.png"
+    # get_water(srcp, mb, "test_dewm")
+    # srcp = "JD/jd_clean.png"
+    flist = os.listdir("JD")
+    for pp in flist:
+        logo_clean_show("JD/" + pp)
+
+    print("Over")
+
+"""
+需要生成水印图对应的 蒙版size图，再进行inpaint，重要参数：
+logo膨胀参数， inpaint邻域半径， inpaint方式[INPAINT_TELEA/NS]
+"""
+# -*- coding: utf-8 -*-
+# @Author  : guowei.yy@cai-inc.com
+# @File    : get_click_pixes.py
+# 像素计算与测试
+import cv2
+import numpy as np
+from PIL import Image, ImageFilter
+
+def get_pixlocal(imgp):
+    # 图片路径
+    # img = cv2.imread('test.jpg')
+    img = cv2.imread(imgp)
+    a = []
+    b = []
+    print(np.shape(img))
+    def on_EVENT_LBUTTONDOWN(event, x, y, flags, param):
+        if event == cv2.EVENT_LBUTTONDOWN:
+            xy = "%d,%d" % (x, y)
+            a.append(x)
+            b.append(y)
+            print(x, y, img.item(y, x, 0), img.item(y, x, 1), img.item(y, x, 2))
+            cv2.circle(img, (x, y), 1, (0, 0, 255), thickness=-1)
+            cv2.putText(
+                img, xy, (x, y), cv2.FONT_HERSHEY_PLAIN,
+                1.0, (0, 0, 0), thickness=1
+            )
+            cv2.imshow("image", img)
+    cv2.namedWindow("image")
+    cv2.setMouseCallback("image", on_EVENT_LBUTTONDOWN)
+    cv2.imshow("image", img)
+    cv2.waitKey(0)
+    # print(a[0], b[0])
+
+def look_pixv(imgp, plt, prb):
+    img = Image.open(imgp)
+    imgarr = np.array(img)
+    print(imgarr.shape, np.shape(imgarr), img.size)
+    lx, rx, ty, by = plt[0], prb[0], plt[1], prb[1]
+    # lx, rx, ty, by = plt[0], prb[0], plt[1]+60, prb[1]+60
+    # patch = imgarr[376:426, 216:236, :]  # w=20, h=50
+    patch = imgarr[ty:by, lx:rx, :]  # w=20, h=50
+    print(patch.shape)
+    Image.fromarray(patch).show()
+    # print(patch)
+    h, w, c = patch.shape
+    blk = Image.fromarray(np.ones((h, w, c), dtype=np.uint8)*255).convert(mode="RGBA")
+    # blk = Image.fromarray(np.ones((h, w, c), dtype=np.uint8)*255).convert(mode="RGB")
+    dst = blk - patch
+    print(dst.shape)
+    # for ci in range(c):
+    #     print("第", ci, "个通道")
+    #     for i in range(h):
+    #         linel = [str(pix[ci]) for pix in patch[i]]
+    #         lstr = ' '.join(linel)
+    #         print(lstr)
+    # for ci in range(c):
+    #     print("第", ci, "个通道")
+    #     for i in range(h):
+    #         linel = [str(pix[ci]) for pix in dst[i]]
+    #         lstr = ' '.join(linel)
+    #         print(lstr)
+    for i in range(h):
+        # linel = ["(" + ','.join([str(pix[ci]) for ci in range(c)]) + ")" for pix in patch[i]]
+        # linel = ["(" + ','.join([str(pix[ci]) for ci in range(3)]) + ")" for pix in patch[i]]
+        linel = ["(" + ','.join([str(pix[ci]) for ci in range(3, 4)]) + ")" for pix in patch[i]]
+        # linel = ["(" + ','.join([str(pix[ci][-1]) for ci in range(c)]) + ")" for pix in patch[i]]
+        # linel = ["(" + ','.join([str(pix[ci]/255)[:5] for ci in range(3, 4)]) + ")" for pix in patch[i]]
+        lstr = ' '.join(linel)
+        print(lstr)
+    # patch 是logo图
+    # blk 是原图
+    # dst 是差值图 【蓝绿色，黑背景】
+    Image.fromarray(dst).show()
+    blk = patch + dst  # 原图=logo图+差值图
+    Image.fromarray(blk).show()
+    # 如何求一张logo水印图的差值图
+
+def dist_logopix_jds(imgap, imgbp, plt, prb):
+    imga = Image.open(imgap).convert(mode="RGB")
+    imgb = Image.open(imgbp).convert(mode="RGB")
+    imgarr = np.array(imga)
+    imgbrr = np.array(imgb)
+    print(imgarr.shape, np.shape(imgarr), imga.size)
+    print(imgbrr.shape, np.shape(imgbrr), imgb.size)
+    lx, rx, ty, by = plt[0], prb[0], plt[1], prb[1]
+    apatch = imgarr[ty:by, lx:rx, :]  # w=20, h=50
+    bpatch = imgbrr[ty:by, lx:rx, :]  # w=20, h=50
+    dis = apatch - bpatch
+    # dis = apatch - apatch
+    h, w, c = apatch.shape
+
+    # for ci in range(c):
+    #     print("第", ci, "个通道, logo字体像素差")
+    #     for i in range(h):
+    #         linel = [str(pix[ci]) for pix in dis[i]]
+    #         lstr = ' '.join(linel)
+    #         print(lstr)
+    # blk = Image.fromarray(np.ones((h, w, c), dtype=np.uint8) * 255).convert(mode="RGB")
+    #
+    # adst = blk - apatch
+    # for i in range(h):
+    #     linel = ["(" + ','.join([str(pix[ci]) for ci in range(c)]) + ")" for pix in adst[i]]
+    #     lstr = ' '.join(linel)
+    #     print(lstr)
+    #
+    # bdst = blk - bpatch
+    # for i in range(h):
+    #     linel = ["(" + ','.join([str(pix[ci]) for ci in range(c)]) + ")" for pix in bdst[i]]
+    #     lstr = ' '.join(linel)
+    #     print(lstr)
+    # bdst = blk - bpatch
+    # 计算两个图像的像素差
+    for i in range(h):
+        linel = ["(" + ','.join([
+            str(apix[ci] - bpix[ci]) if apix[ci] > bpix[ci] else str(bpix[ci] - apix[ci])
+                for ci in range(c)
+        ]) + ")" for apix, bpix in zip(apatch[i], bpatch[i])]
+        lstr = ' '.join(linel)
+        print(lstr)
+
+    Image.fromarray(apatch).show()
+    Image.fromarray(bpatch).show()
+
+"""
+找出jd水印的原生配方：
+分析： 透明是绝对要给透明度的，如果设置alp全为0，那么logo成分为0，看不到logo，不行
+如果alp设置全为100， 那么将logo部分将全部取代原图像素，不合理
+问题：透明度区还需要分字体和背景，在logo背景上透明度是0（没有logo成分），在logo字体上透明度为对应值
+"""
+from LogoRemoval import get_src_logo_img
+def get_logobypath(imgp):
+    img = Image.open(imgp)
+    image = img.copy()
+    # watermark = Image.open("opc/370x52.png")  # 水印路径，加在下侧
+    # watermark = Image.open("opc/logo_a127.png")  # 水印路径，加在下侧
+    # watermark = Image.open("opc/logo_a71.png")  # 水印路径，加在下侧
+    # watermark = Image.open("opc/logo_X.png")  # 水印路径，加在下侧
+    # watermark = Image.open("opc/111.png")  # 水印路径，加在下侧
+    # watermark = Image.open("opc/222.png")  # 水印路径，加在下侧
+    # watermark = Image.open("opc/333.png")  # 水印路径，加在下侧
+    # watermark = Image.open("opc/444.png")  # 水印路径，加在下侧
+    # watermark = Image.open("opc/555.png")  # 水印路径，加在下侧
+    watermark = Image.open("opc/666.png")  # 水印路径，加在下侧
+    # watermark = Image.open("_rev_/sy/a_logo/logo_X.png")  # 水印路径，加在下侧
+    # watermark = Image.open("opc/_374x54.png")
+    # image = Image.fromarray(img)
+    if watermark.mode != 'RGBA':
+        alpha = Image.new('L', watermark.size, 255)  # 创建A通道  L表示8位灰度图
+        watermark.putalpha(alpha)  # pil RGB 如何转 BGR
+
+    # 获取正中位置
+    # bh, bw, _ = img.shape  # shape的宽高位置和pil的有区别！！！
+    bw, bh = img.size  # shape的宽高位置和pil的有区别！！！
+    sw, sh = watermark.size
+    iw = int((bw - sw) / 2)
+    ih = int((bh - sh) / 2)
+
+    # print(bw, bh, sw, sh, "==>", iw, ih)
+    TRANSPARENCY = 100
+    paste_mask = watermark.split()[3].point(lambda i: i * TRANSPARENCY / 100.)  # 第四通道
+    # print(np.array(paste_mask))
+    # print("pmask 全部255, 粘贴全部")
+    # paste_mask = watermark.split()[3].point(lambda i: 255)  # 第四通道
+    # print("pmask 全部0, 不粘贴")
+    # paste_mask = watermark.split()[3].point(lambda i: 0)  # 第四通道
+    # 字体处为1， 其余位0
+    # wr, wg, wb, wa = watermark.split()
+    # iwatermark = Image.merge('RGBA', (wg, wb, wr, wa))  # paste之前，水印红蓝反色
+
+    image.paste(watermark, (iw, ih + 60), mask=paste_mask)  # pm是wm本身第四通道的像素值
+    # print("透明通道的值：", paste_mask)  # 一个0~255的值的 单通道map
+    # paste_mask.save("tpix/pmask.jpg")
+    """
+    模板图像的尺寸必须与变量image对应的图像尺寸一致。
+    如果变量mask对应图像的值为255，则模板图像的值直接被拷贝过来；如果变量mask对应图像的值为0，则保持当前图像的原始值。
+    alp => vmask / 255
+    vpix = alp * logo + (1-alp) * src
+    img = (src - alp * logo)/(1-alp)
+    """
+    return image, watermark, (iw, ih), paste_mask
+
+"""
+def get_initpix(vsrc, valp, vlogo):
+    # valp = 0.0745 if valp > 0.0 else 0.0
+    if valp == 1:
+        return vlogo
+    else:
+        if valp != 0:
+            # print(vsrc, valp, valp*255, vlogo)
+            pass
+        # return (vsrc - valp * vlogo) / (1 - valp)  # 因为是 uint，小减大时会算为 255-x
+        return ((vsrc - valp * vlogo) if vsrc > valp * vlogo else (valp * vlogo - vsrc)) / (1 - valp)
+    # return 255 - ((vsrc - valp * vlogo) / (1 - valp))
+
+def Aget_initpix(vsrc, valp, vlogo, prt=False):
+    rst = 0
+    if valp == 1:
+        rst = vlogo
+    elif valp == 0:
+        rst = vsrc
+    else:
+        # vsrc, vlogo = float(vsrc), float(vlogo)
+        rst = ((vsrc - valp * vlogo)) / (1 - valp)
+        # print("valp 为浮点数", vsrc, valp, vlogo, " ===> ", rst)
+    # 在纯背景处，希望过渡区 得到更大的像素值
+    if rst < 0:
+        rst = 0
+    if rst > 255:
+        rst = 255
+    # if prt:
+    #     print(vsrc, valp, vlogo, " ===> ", rst)
+    return rst
+
+def sim2jd_logo(pix):
+    flag = False
+    # 237, 185, 188
+    r, g, b = pix[0], pix[1], pix[2]
+    dr = max(r, 237) - min(r, 237)
+    dg = max(g, 185) - min(g, 185)
+    db = max(b, 188) - min(b, 188)
+    if max([dr, dg, db]) < 10 and np.mean([dr, dg, db]) < 6:
+        flag = True
+    return flag
+
+def pix_logo_rm(src, wm, local, pmask):
+    sw, sh = local
+    # src.show()
+
+    src = np.array(src)  # 编程int类型，使得不会导致计算值溢出
+    wm = np.array(wm)
+    pmask = np.array(pmask)
+    # 从wh开始遍历每一个元素值
+    # print("输入shape：",
+    #     np.shape(src),  # (348, 500, 3)
+    #     np.shape(wm),  # (53, 371, 4)
+    #     np.shape(pmask),  # (53, 371)
+    #     # pmask
+    # )  # 输入shape： (348, 500, 3) (53, 371, 4) (53, 371)
+    # 打印pmask
+    # h, w = pmask.shape
+    # for i in range(h):  # 每一行
+    #     templ = [str(pmask[i][j]) if pmask[i][j] != 0 else '_' for j in range(w)]
+    #     lstr = ' '.join(templ)
+    #     print(lstr)
+    # pass
+
+    th, tw, tc = np.shape(src)
+    # targ = Image.fromarray(np.zeros((th, tw, 3), dtype=np.uint8)).convert(mode="RGB")
+
+    timg = src.copy()  # 拷贝一个map
+    h, w = pmask.shape  # 要遍历的宽高： 53, 371
+    for i in range(h):
+        for j in range(w):
+            x, y = j+sw, i+sh  # 求操作图上的坐标
+            if x < 0 or x >= tw or y < 0 or y >= th:
+                continue
+
+            for ci in range(3):
+                vsrc = timg[y][x][ci]
+                valp = pmask[i][j] / 255
+                vlogo = wm[i][j][ci]
+                # timg[y][x][ci] = int(get_initpix(vsrc, valp, vlogo))
+
+                timg[y][x][ci] = int(Aget_initpix(vsrc, valp, vlogo, prt=True))
+
+            # 至此，一个像素点计算完毕
+            # print(x, y, src[y][x], timg[y][x])
+
+    # 至此，整个 timg 计算完毕
+    # print(np.shape(timg))
+    timg_ = np.asarray(timg, dtype=np.uint8)
+    ttimg = Image.fromarray(timg_).convert(mode="RGB")
+    # ttimg.show()
+    # ttimg.save("tpix/yy___.jpg")  # 通过水印图得到原图
+    # print("还原计算完毕！")
+    return np.array(ttimg)
+
+def pix_logo_rm_jd(src, wm, local, pmask):
+    sw, sh = local
+    # src.show()
+
+    src = np.array(src)
+    wm = np.array(wm)
+    pmask = np.array(pmask)
+    # 从wh开始遍历每一个元素值
+    print("输入shape：",
+        np.shape(src),  # (348, 500, 3)
+        np.shape(wm),  # (53, 371, 4)
+        np.shape(pmask),  # (53, 371)
+        # pmask
+    )  # 输入shape： (348, 500, 3) (53, 371, 4) (53, 371)
+
+    # 打印pmask
+    # h, w = pmask.shape
+    # for i in range(h):  # 每一行
+    #     templ = [str(pmask[i][j]) if pmask[i][j] != 0 else '_' for j in range(w)]
+    #     lstr = ' '.join(templ)
+    #     print(lstr)
+    # pass
+
+    th, tw, tc = np.shape(src)
+    # targ = Image.fromarray(np.zeros((th, tw, 3), dtype=np.uint8)).convert(mode="RGB")
+
+    timg = src.copy()  # 拷贝一个map
+    # print(sw, sh)  # paste 的起始位置  64 147
+    h, w = pmask.shape  # 要遍历的宽高： 53, 371
+    for i in range(h):
+        for j in range(w):
+            x, y = j+sw, i+sh  # 求操作图上的坐标
+            if x < 0 or x >= tw or y < 0 or y >= th:
+                continue
+
+            """  # 手工判断背景与非背景
+            if not sim2jd_logo(timg[y][x]):  # 非背景， 思路：按照背景与非背景区别对待
+                for ci in range(3):
+                    vsrc = timg[y][x][ci]
+                    # vsrc = timg[y][x][-ci]
+                    valp = pmask[i][j] / 255
+                    vlogo = wm[i][j][ci]
+                    # print("采用logo的 逆通道， 处理黄背景问题（b通道为还原）")
+                    # vlogo = wm[i][j][2-ci]  # 应该采用logo的 逆通道
+                    timg[y][x][ci] = int(Aget_initpix(vsrc, valp, vlogo))
+            else:  # 背景
+                timg[y][x][:] = 255
+            """
+            # """
+            for ci in range(3):
+                vsrc = timg[y][x][ci]
+                valp = pmask[i][j] / 255
+                vlogo = wm[i][j][ci]
+                # print("采用logo的 逆通道， 处理黄背景问题（b通道为还原）")
+                # vlogo = wm[i][j][2-ci]  # 应该采用logo的 逆通道
+                timg[y][x][ci] = int(Aget_initpix(vsrc, valp, vlogo))
+            # """
+            # 至此，一个像素点计算完毕
+            # print(x, y, src[y][x], timg[y][x])
+
+    # 至此，整个 timg 计算完毕
+    # print(np.shape(timg))
+    ttimg = Image.fromarray(timg).convert(mode="RGB")
+    # print("高斯模糊")
+    # ttimg = ttimg.filter(ImageFilter.GaussianBlur(radius=1))
+    # ttimg.show()
+    # ttimg.save("tpix/yy___.jpg")  # 通过水印图得到原图
+    print("还原计算完毕！")
+    return np.array(ttimg)
+
+def contrast(imgp, yyop):
+    # 还原的图 与原图 求差
+    img = Image.open(imgp).convert(mode="RGB")
+    yy = Image.open(yyop).convert(mode="RGB")
+    imga = np.array(img)
+    yya = np.array(yy)
+    dst = imga - yya
+    print(dst, np.max(dst), np.min(dst))
+
+def showAlph(imgp):
+    logo = Image.open(imgp).convert(mode="RGBA")
+    ialph = logo.split()[3].convert(mode="L")
+    ialph.show()
+
+if __name__ == '__main__':
+    # imgp = 'jd-logo.jpg'  # (800, 800, 3)
+    # imgp = "JD/ej.jpg"  # (348, 500, 3)
+    # imgp = "JD/car2.jpg"  # (348, 500, 3)
+    # imgp = "ijd/l4.jpg"
+    # imgp_ = "ijd/jdm.jpg"  # (348, 500, 3)
+    # imgp = "ijd/jdm_dlg.jpg"  # (348, 500, 3)
+    # imgp = "_solution_/yyjd/jdm_comp.jpg"  # 1813,376   1875,430
+    # imgp = "_solution_/yyjd/l4_rm.jpg"  # 1813,376   1875,430
+    # imgp = "_solution_/yyjd/yy8_2014_dlg.jpg"  # 1813,376   1875,430
+    # imgp = "_solution_/yyjd/yy8_2014_comp.jpg"  # 1813,376   1875,430
+    # imgp = "opc/370x52.png"
+    # imgp = "opc/555.png"
+    # imgp = "opc/666_33.png"  # 旁边颜色都成了 255
+    # imgp = "opc/666.png"  # 旁边颜色都成了 255  [偏低 =》]
+    # imgp = "opc/777.png"
+    # imgp = "opc/888.png"
+    # imgp = "opc/999.png"  # 字体颜色不太对  []
+    # imgp = "uedx/29.png"
+    # imgp = "uedx/30.png"
+    # imgp = "uedx/27.png"
+    # imgp = "uedx/30%.png"
+    # imgp = "opc/194_31_36_77.png"
+    # imgp = "opc/199_16_34_a2.png"
+    # imgp = "opc/lkp_tmd5.png"
+    imgp = "opc/ilogor.png"
+
+    # imgp = "_rev_/sy/yy_rml.jpg"
+
+    # imgp = "_rev_/sy/jd0_logo_.jpg"
+    # imgp = "_rev_/sy/rmed.jpg"
+    # imgp = "_rev_/sy/jd_sc.jpg"
+
+    # imgp = "tpix/none.png"
+    # src, wm, (iw, ih), pmask = get_logobypath(imgp)
+    # src.save("tpix/yysrc.jpg")
+
+    # limgp = "tpix/elogo.jpg"  # (348, 500, 3)
+    # omgp = "tpix/ologo.jpg"  # (348, 500, 3)
+    # get_pixlocal(imgp)
+
+    # look_pixv(imgp, plt=(212, 377), prb=(237, 428))  # 212, 377; 237, 428
+    # look_pixv(imgp, plt=(1813, 376), prb=(1875, 430))  # 212, 437; 237, 488
+    # look_pixv(imgp, plt=(1813, 436), prb=(1875, 490))  # 212, 437; 237, 488
+
+    # imgp = "_rev_/yy0_2014.jpg"
+    # imgp_ = "_rev_/yy7_2014.jpg"
+    # imgp_ = "_rev_/nologo/yy0_x.jpg"
+    # dist_logopix_jds(imgp, imgp_, plt=(212, 377), prb=(237, 428))
+
+    # look_pixv(imgp, plt=(212, 377), prb=(237, 428))
+    look_pixv(imgp, plt=(0, 0), prb=(373, 54))
+    # look_pixv(imgp, plt=(10, 8), prb=(28, 14))
+
+    # 如果把透明度通道  当灰度值显示一下的话
+    # showAlph(imgp)
+
+    # 去水印
+    # src, wm, (iw, ih), pmask = get_logobypath(imgp)
+    # ttimg = pix_logo_rm(src, wm, (iw, ih), pmask)
+
+    # yyo = "tpix/yy_rst.jpg"
+    # contrast(imgp, yyo)
+"""
+明显 jd 原生水印 像素有毛边而且窄一点，内层呈现某种固定颜色
+而 yy 手工水印 像素更宽
+215 375
+236 426
+233,154
+258,200
+J字母处的pix值
+62, 150
+86, 200
+(255,251,249) (241,231,230) (234,187,193)
+(238,185,191) (239,184,189) (238,186,190) (236,186,187) (236,186,189) (234,188,191)
+(248,219,221) (255,251,248)
+"""
+# -*- coding: utf-8 -*-
+# @Author  : guowei.yy@cai-inc.com
+# @File    : LogoRemoval.py
+# 水印的对比操作函数
+import cv2
+import numpy as np
+from PIL import Image, ImageFilter
+import random
+import os
+
+def get_src_logo_img(img):  # 传入pil-img
+    image = img.copy()
+    watermark = Image.open("opc/370x52.png")  # 水印路径
+    # image = Image.fromarray(img)
+    if watermark.mode != 'RGBA':
+        alpha = Image.new('L', watermark.size, 255)  # 创建A通道  L表示8位灰度图
+        watermark.putalpha(alpha)  # pil RGB 如何转 BGR
+
+    # 获取正中位置
+    # bh, bw, _ = img.shape  # shape的宽高位置和pil的有区别！！！
+    bw, bh = img.size  # shape的宽高位置和pil的有区别！！！
+    sw, sh = watermark.size
+    iw = int((bw - sw) / 2)
+    ih = int((bh - sh) / 2)
+    print(bw, bh, sw, sh, "==>", iw, ih)
+
+    TRANSPARENCY = 100
+    paste_mask = watermark.split()[3].point(lambda i: i * TRANSPARENCY / 100.)  # 第四通道
+
+    # wr, wg, wb, wa = watermark.split()
+    # iwatermark = Image.merge('RGBA', (wg, wb, wr, wa))  # paste之前，水印红蓝反色
+
+    print("在下面一点的地方添加人工 logo")
+    image.paste(watermark, (iw, ih + 60), mask=paste_mask)
+    return image
+
+
+def get_imask4dr(img, watermark, dradius):
+    img = Image.open(img)
+    watermark = Image.open(watermark)
+    bh, bw, c = np.array(img).shape
+    sw, sh = watermark.size
+    iw = int((bw - sw) / 2)
+    ih = int((bh - sh) / 2)
+    blk = Image.fromarray(np.zeros((bh, bw, 4), dtype=np.uint8)).convert(mode="RGBA")  # 准备空白，粘贴水印图，并转换为 dip的蒙版图
+    _, bg, bb, ba = blk.split()  # 粘贴前先分离一下
+    blk.paste(watermark, (iw, ih))  # 粘贴logo
+    # 对blk作处理， 取其红色通道 , blk是img-size，而wm是logo-size, 需要在指定位置paste logo
+    pr_, _, _, _ = blk.split()  # 粘贴后分离
+    pr = np.array(pr_)  # 在阈值化之前，最好进行单通道的膨胀处理！
+
+    if dradius != 0:
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (dradius, dradius))  # 膨胀半径
+        dilated = cv2.dilate(pr, kernel)  # 膨胀图像
+        pr = dilated  # 确认生成膨胀的图像
+
+    pr[pr >= 1] = 255
+    pri = Image.fromarray(pr)
+    rblk = Image.merge("RGBA", (pri, bg, bb, pri))
+    return cv2.cvtColor(np.array(rblk).astype(np.uint8), cv2.COLOR_RGBA2GRAY)
+
+
+def save_sameshape_logo_mask_pic(img, watermark, dradius):
+    img = Image.open(img)
+    watermark = Image.open(watermark)
+    # """  # 准备空白，粘贴水印图，并转换为 dip的蒙版图
+    bh, bw, c = np.array(img).shape
+    # print(bh, bw, c)
+    sw, sh = watermark.size
+    iw = int((bw - sw) / 2)
+    ih = int((bh - sh) / 2)
+    blk = Image.fromarray(np.zeros((bh, bw, 4), dtype=np.uint8)).convert(mode="RGBA")
+    # blk = Image.fromarray(np.zeros((bh, bw, c+1), dtype=np.uint8)).convert(mode="RGBA")
+    _, bg, bb, ba = blk.split()  # 粘贴前先分离一下
+    blk.paste(watermark, (iw, ih))  # 粘贴logo
+    # 对blk作处理， 取其红色通道 , blk是img-size，而wm是logo-size, 需要在指定位置paste logo
+    pr_, _, _, _ = blk.split()  # 粘贴后分离
+    pr = np.array(pr_)  # 在阈值化之前，最好进行单通道的膨胀处理！
+
+    # cv2.merge([pr, pr, pr])
+    # bz_ = Image.fromarray(pr, mode='L')
+    # kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+    # kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+    # kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
+    # kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (9, 9))
+    # kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (21, 21))
+
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (dradius, dradius))  # 膨胀半径
+    dilated = cv2.dilate(pr, kernel)  # 膨胀图像
+    pr = dilated  # 确认生成膨胀的图像
+    pr = pr  # 原图，不做膨胀
+
+    pr[pr >= 1] = 255
+    pri = Image.fromarray(pr)
+    print(pri.size, bg.size)
+    rblk = Image.merge("RGBA", (pri, bg, bb, pri))
+
+    # 保存水印图 + 等分辨率 logo图
+    ri = random.randint(0, 100)
+    img.save("save/aha_" + str(ri) + ".png")
+    rblk.save("save/aha_" + str(ri) + "_logo.png")  # , transparency=0
+    # rblk.show()  # 查看蒙版
+
+    return cv2.cvtColor(np.array(img).astype(np.uint8), cv2.COLOR_RGBA2BGR), \
+           cv2.cvtColor(np.array(rblk).astype(np.uint8), cv2.COLOR_RGBA2GRAY)
+
+
+def save_sameshape_logo_mask_pic_4icomp(img, watermark, dradius):
+    img = Image.open(img)
+    watermark = Image.open(watermark)
+    # """  # 准备空白，粘贴水印图，并转换为 dip的蒙版图
+    bh, bw, c = np.array(img).shape
+    # print(bh, bw, c)
+    sw, sh = watermark.size
+    iw = int((bw - sw) / 2)
+    ih = int((bh - sh) / 2)
+    blk = Image.fromarray(np.zeros((bh, bw, 4), dtype=np.uint8)).convert(mode="RGBA")
+    # blk = Image.fromarray(np.zeros((bh, bw, c+1), dtype=np.uint8)).convert(mode="RGBA")
+    _, bg, bb, ba = blk.split()  # 粘贴前先分离一下
+    blk.paste(watermark, (iw, ih))  # 粘贴logo
+    # 对blk作处理， 取其红色通道 , blk是img-size，而wm是logo-size, 需要在指定位置paste logo
+    pr_, _, _, _ = blk.split()  # 粘贴后分离
+    pr = np.array(pr_)  # 在阈值化之前，最好进行单通道的膨胀处理！
+
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (dradius, dradius))  # 膨胀半径
+    dilated = cv2.dilate(pr, kernel)  # 膨胀图像
+    pr = dilated  # 确认生成膨胀的图像
+    pr = pr  # 原图，不做膨胀
+
+    pr[pr >= 1] = 255
+    pri = Image.fromarray(pr)
+    print(pri.size, bg.size)
+    rblk = Image.merge("RGBA", (pri, bg, bb, pri))
+
+    # 保存水印图 + 等分辨率 logo图
+    ri = random.randint(0, 100)
+    img.save("save/aha_" + str(ri) + ".png")
+    rblk.save("save/aha_" + str(ri) + "_logo.png")  # , transparency=0
+
+    return cv2.cvtColor(np.array(img).astype(np.uint8), cv2.COLOR_RGBA2BGR), \
+           cv2.cvtColor(np.array(rblk).astype(np.uint8), cv2.COLOR_RGBA2GRAY)
+
+
+from get_clk_local import *
+def logo_clean_show(srcp, savp, dradius=3, iradius=3, imode=cv2.INPAINT_TELEA):
+    # 1、采用impaint方式
+    # tmplt = "opc/370x52.png"  # 水印图
+    # img, imask = save_sameshape_logo_mask_pic(srcp, tmplt, dradius)  # 根据任意原图 和一张logo模板，生成该图的对应size的蒙版(cv2)
+    # dst = cv2.inpaint(img, imask, iradius, imode)  # src, mask, 参考半径, 修复方式
+
+    # 2、采用逆向计算方式W
+    src, wm, (iw, ih), pmask = get_logobypath(srcp)
+    dst = pix_logo_rm(src, wm, (iw, ih), pmask)
+
+    # dst = cv2.inpaint(img, imask, 3, cv2.INPAINT_TELEA)  # src, mask, 邻域半径, 修复方式
+    # dst = cv2.inpaint(img, imask, 3, cv2.INPAINT_NS)  # src, mask, 邻域半径, 修复方式
+    # dst = cv2.inpaint(img, imask, 1, cv2.INPAINT_NS)  # src, mask, 邻域半径, 修复方式
+    # dst = cv2.inpaint(img, imask, 5, cv2.INPAINT_TELEA)  # src, mask, 邻域半径, 修复方式
+    # dst = cv2.inpaint(img, imask, 7, cv2.INPAINT_TELEA)  # src, mask, 邻域半径, 修复方式
+    # dst = cv2.inpaint(img, imask, 9, cv2.INPAINT_TELEA)  # src, mask, 邻域半径, 修复方式
+    # dst = cv2.inpaint(img, imask, 11, cv2.INPAINT_TELEA)  # src, mask, 邻域半径, 修复方式
+    # dst = cv2.inpaint(img, imask, 15, cv2.INPAINT_TELEA)  # src, mask, 邻域半径, 修复方式
+
+    # ms = "Mtelea" if imode == cv2.INPAINT_TELEA else "Mns"
+    # savp = savp + "new_d" + str(dradius) + "_i" + str(iradius) + "_" + ms
+
+    savp = savp + "yy_0"
+    if not os.path.exists(savp):
+        os.makedirs(savp)
+    print("保存位置：", savp)
+
+    # 保存结果图
+    spic = srcp.rsplit('/', 1)[1].split('.')  # name + subfix
+    # savep = savp + "/" + spic[0] + "_rm." + spic[1]
+    # cv2.imwrite(savep, dst)
+
+    # 保存对比图
+    simg = Image.open(srcp)  # 原图
+    simg = simg.convert(mode="RGB")
+    slogo = get_src_logo_img(simg)  # 获取 logo 水印图
+
+    w, h = simg.size
+    out_image = np.zeros((h, w * 3, 3), dtype=np.uint8)
+    out_image[:, :w] = simg  # 出问题
+    # out_image[:, w:w * 2] = slogo
+    out_image[:, w:w * 2] = src
+    out_image[:, w * 2:] = Image.fromarray(dst)
+
+    # b, g, r = cv2.split(dst)
+    # idst = cv2.merge([r, g, b])
+    # out_image[:, w * 2:] = idst  # 红蓝反色
+    rsavep = savp + "/" + spic[0] + "_comp." + spic[1]
+    Image.fromarray(out_image).save(rsavep)  # 保存
+
+def logo_clean_yy(srcp, pngp, savp):
+    print("testing: ", srcp)
+    ilogo = Image.open(srcp)  # 读入的图片
+    # ilogo.show()
+    # print(ilogo.mode)
+    # ilogo = ilogo.filter(ImageFilter.MedianFilter(5))  # 中值滤波，貌似没效果？
+    slogo, wm, (iw, ih), pmask = get_logobypath(srcp, pngp)  # 获取计算资源, 获取双水印
+    # dst_ = pix_logo_rm_jd(slogo, wm, (iw, ih), pmask)  # 除原生水印  214 373
+    dst_ = pix_logo_rm(slogo, wm, (iw, ih), pmask)  # 除原生水印  214 373
+    dst = pix_logo_rm(Image.fromarray(dst_), wm, (iw, ih+60), pmask)  # 除下方60pix人工水印
+    # dst = pix_logo_rm(Image.fromarray(_dst), wm, (iw, ih+120), pmask)  # 对白色区域除水印
+
+    # 由于自制水印的去除，几乎都恰巧计算会原来的值；
+    # 而带有少许噪声的jd-logo，细微的差别会导致负数转移造成误差；
+
+    # savp = savp + "yyjd"
+    if not os.path.exists(savp):
+        os.makedirs(savp)
+    print("保存位置：", savp)
+
+    # 保存结果图
+    spic = srcp.rsplit('/', 1)[1].split('.')  # name + subfix
+
+    w, h = ilogo.size
+    out_image = np.zeros((h, w * 3, 3), dtype=np.uint8)
+    out_image[:, :w] = ilogo  # 原图
+    out_image[:, w:w * 2] = slogo  # 手工图 + logo 与原图对比
+    out_image[:, w * 2:] = Image.fromarray(dst)
+
+    # irsavep = savp + "/" + spic[0] + "_dlg." + spic[1]
+    # slogo.save(irsavep)  # 保存双水印图
+
+    dsavep = savp + "/dst/" + spic[0] + "_rm." + spic[1]
+    idst = Image.fromarray(dst)
+    idst.save(dsavep)
+
+    rsavep = savp + "/" + spic[0] + "_comp." + spic[1]
+    iout = Image.fromarray(out_image)
+    iout.save(rsavep)
+
+    iout.show()
+
+
+def logo_clean_by_png(srcp, png, savp):
+    ilogo = Image.open(srcp)  # 读入的图片
+
+    # 2、逆算W， 先通过对原图与系统已有的logo模板，获取一些参数
+    slogo, wm, (iw, ih), pmask = get_logobypath_png(srcp, png)  # 获取计算资源, 获取双水印
+    dst_ = pix_logo_rm(slogo, wm, (iw, ih), pmask)  # 除原生水印  214 373
+    dst = pix_logo_rm(Image.fromarray(dst_), wm, (iw, ih+60), pmask)  # 除下方60pix人工水印
+
+    Image.fromarray(dst).show()
+
+    # # savp = savp + "yyjd"
+    # if not os.path.exists(savp):
+    #     os.makedirs(savp)
+    # # print("保存位置：", savp)
+
+    # # 保存结果图
+    # spic = srcp.rsplit('/', 1)[1].split('.')  # name + subfix
+
+    # w, h = ilogo.size
+    # out_image = np.zeros((h, w * 3, 3), dtype=np.uint8)
+    # out_image[:, :w] = ilogo  # 原图
+    # out_image[:, w:w * 2] = slogo  # 手工图 + logo 与原图对比
+    # out_image[:, w * 2:] = Image.fromarray(dst)
+
+    # rsavep = savp + "/" + spic[0] + "_comp." + spic[1]
+    # iout = Image.fromarray(out_image)
+
+    # iout.save(rsavep)
+    # iout.show()
+
+
+# 反推jd-logo函数
+# 取字体点处 大量的值来 拟合计算 logo的像素值（r，g，b，a）
+# 字体处的像素坐标： 230,380  235,405
+def get_jd_logo(ilogo, local, logo_wh):
+    il = np.array(ilogo)
+    isrc = np.ones(np.shape(il), dtype=np.uint8) * 255
+
+    lx, rx, ty, by = local[0], local[0] + logo_wh[0], local[1], local[1] + logo_wh[1]
+    idst = isrc - il
+
+    # idstlogo = idst[ty:by, lx:rx, :]
+    # h, w, c = np.shape(idstlogo)  # 截取logo部分打印
+    h, w, c = np.shape(il)  # 截取logo部分打印
+
+    for i in range(ty, by):
+        linel = ["(" + ','.join([str(pix[ci]) for ci in range(c)]) + ")" for pix in idst[i]]
+        lstr = ' '.join(linel)
+        print(lstr)  # 打印src与 加了logo的差值
+
+    compLogo(il, (230, 380), (235, 405))
+    idm = Image.fromarray(idst)  # .show()
+    return idm
+"""
+
+def compLogo(il, ptl, prb):
+    lx, ty = ptl
+    rx, by = prb
+    ndarr = il[ty:by, lx:rx, :]
+    h, w, c = np.shape(ndarr)
+    # for ci in range(c):
+    #     print("第", ci, "个通道")  # 各个通道求均值 [sum/counts]
+    #     for i in range(h):
+    #         sgc_list = [pix[ci] for pix in ndarr[i]]
+    #         curh_s = np.sum(np.array(sgc_list))
+    #         print(curh_s, " 求和后：", sgc_list)
+    darr_r = ndarr[:, :, 0]
+    darr_g = ndarr[:, :, 1]
+    darr_b = ndarr[:, :, 2]
+
+    print(darr_r)
+    print(darr_g)
+    print(darr_b)
+    print(np.mean(darr_r))
+    print(np.mean(darr_g))
+    print(np.mean(darr_b))
+    # (255, 255, 255)  白底处的像素
+    # (237, 185, 188)  这是白底处加水印后的像素值
+    r, g, b = 237, 185, 188
+
+# 本方法主要用于 反推 jd-logo 的真实值
+def logo_clean_yy_rsh(srcp, savp):
+    ilogo = Image.open(srcp)  # 读入的图片
+
+    # 2、采用逆向计算方式W， 先通过对原图与系统已有的logo模板，获取一些参数
+    _, wm, (iw, ih), pmask = get_logobypath(srcp)  # 获取计算资源, 获取双水印
+    dst = pix_logo_rm(ilogo, wm, (iw, ih), pmask)  # 除水印
+
+    # 反推的 53x371 的京东水印图
+    clogo = get_jd_logo(ilogo, (iw, ih), pmask.size)
+
+    savp = savp + "yyjd"
+    if not os.path.exists(savp):
+        os.makedirs(savp)
+    print("保存位置：", savp)
+
+    # 保存结果图
+    spic = srcp.rsplit('/', 1)[1].split('.')  # name + subfix
+
+    w, h = ilogo.size
+    out_image = np.zeros((h, w * 3, 3), dtype=np.uint8)
+    out_image[:, :w] = ilogo  # 原图（0+logo）
+    out_image[:, w:w * 2] = clogo  # 原图 - 0
+    out_image[:, w * 2:] = Image.fromarray(dst)  # 除水印后
+    iout = Image.fromarray(out_image)
+    iout.show()
+
+    # irsavep = savp + "/" + spic[0] + "_dlg." + spic[1]
+    # slosgo.save(irsavep)  # 保存双水印图
+    # dsavep = savp + "/" + spic[0] + "_rm." + spic[1]
+    # idst = Image.fromarray(dst)
+    # idst.save(dsavep)
+    # rsavep = savp + "/" + spic[0] + "_comp." + spic[1]
+    # iout.save(rsavep)
+
+img_path = "JD/car2.jpg"
+# img_path = "new/l1.pn g"
+tmplt = "opc/370x52.png"
+img = cv2.imread(img_path)
+dradius = 0
+iradius = 0
+ipms = [cv2.INPAINT_TELEA, cv2.INPAINT_NS]
+ipm = 0
+
+def change_dradius(x):
+    imask = get_imask4dr(img_path, tmplt, x)
+    dst = cv2.inpaint(img, imask, iradius, ipms[ipm])  # src, mask, 参考半径, 修复方式
+    cv2.imshow('myImg', dst)
+
+def change_iradius(x):
+    imask = get_imask4dr(img_path, tmplt, dradius)
+    dst = cv2.inpaint(img, imask, x, ipms[ipm])  # src, mask, 参考半径, 修复方式
+    cv2.imshow('myImg', dst)
+
+def change_ipm(x):
+    imask = get_imask4dr(img_path, tmplt, dradius)
+    dst = cv2.inpaint(img, imask, iradius, ipms[x])  # src, mask, 参考半径, 修复方式
+    cv2.imshow('myImg', dst)
+
+def myslide():
+    cv2.namedWindow('myImg')
+    cv2.createTrackbar('dr', 'myImg', 0, 30, change_dradius)
+    cv2.createTrackbar('ir', 'myImg', 0, 100, change_iradius)
+
+    # 创建一个开关滑动条，只有两个值，起开关按钮作用
+    switch = '0:T\n1:N'
+    cv2.createTrackbar(switch, 'myImg', 0, 1, change_ipm)
+
+    while True:
+        k = cv2.waitKey(1) & 0xFF
+        if k == 27:
+            break
+        cv2.getTrackbarPos('dr', 'myImg')
+        cv2.getTrackbarPos('ir', 'myImg')
+        cv2.getTrackbarPos('ipm', 'myImg')
+
+    cv2.destroyAllWindows()
+
+
+def dir_test():
+    flist = os.listdir("JD")
+    for pp in flist:
+        logo_clean_show(
+            "JD/" + pp,
+            savp="_solution_/",
+            dradius=1,  # 膨胀半径 [无膨胀]
+            iradius=0,  # inp半径 [0inp]
+            imode=cv2.INPAINT_NS,
+        )
+    print("Over")
+
+
+def get_logobypath(imgp, pngp):
+    img = Image.open(imgp)
+    image = img.copy()
+
+    # pngp = "opc/370x52.png"
+    # pngp = "uedx/25%.png"
+    # pngp = "uedx/29%.png"
+    # pngp = "uedx/27.png"
+    # pngp = "uedx/28.png"
+    # pngp = "uedx/29.png"
+    # pngp = "opc/666.png"  #
+    # pngp = "opc/666_33.png"  #
+    # pngp = "opc/777.png"
+    # pngp = "opc/888.png"
+    # pngp = "opc/999.png"
+
+    print("logo地址:", pngp)
+    # watermark = Image.open("opc/666.png")  # 水印路径，加在下侧
+    watermark = Image.open(pngp)  # 水印路径，加在下侧
+
+    if watermark.mode != 'RGBA':
+        alpha = Image.new('L', watermark.size, 255)  # 创建A通道  L表示8位灰度图
+        watermark.putalpha(alpha)  # pil RGB 如何转 BGR
+
+    # 获取正中位置
+    # bh, bw, _ = img.shape  # shape的宽高位置和pil的有区别！！！
+    bw, bh = img.size  # shape的宽高位置和pil的有区别！！！
+    sw, sh = watermark.size
+    iw = int((bw - sw) / 2)
+    ih = int((bh - sh) / 2)
+
+    # print(bw, bh, sw, sh, "==>", iw, ih)
+
+    TRANSPARENCY = 100
+    paste_mask = watermark.split()[3].point(lambda i: i * TRANSPARENCY / 100.)  # 第四通道
+
+    image.paste(watermark, (iw, ih + 60), mask=paste_mask)  # pm是wm本身第四通道的像素值
+    """
+    模板图像的尺寸必须与变量image对应的图像尺寸一致。
+    如果变量mask对应图像的值为255，则模板图像的值直接被拷贝过来；如果变量mask对应图像的值为0，则保持当前图像的原始值。
+
+    alp => vmask / 255
+    vpix = alp * logo + (1-alp) * src
+    img = (src - alp * logo)/(1-alp)
+    """
+    return image, watermark, (iw, ih), paste_mask
+
+
+def get_logobypath_png(imgp, png):
+    img = Image.open(imgp)
+    image = img.copy()
+    watermark = png  # 水印 img
+
+    if watermark.mode != 'RGBA':
+        alpha = Image.new('L', watermark.size, 255)  # 创建A通道  L表示8位灰度图
+        watermark.putalpha(alpha)  # pil RGB 如何转 BGR
+
+    # 获取正中位置
+    # bh, bw, _ = img.shape  # shape的宽高位置和pil的有区别！！！
+    bw, bh = img.size  # shape的宽高位置和pil的有区别！！！
+    sw, sh = watermark.size
+    iw = int((bw - sw) / 2)
+    ih = int((bh - sh) / 2)
+
+    # print(bw, bh, sw, sh, "==>", iw, ih)
+    TRANSPARENCY = 100
+    paste_mask = watermark.split()[3].point(lambda i: i * TRANSPARENCY / 100.)  # 第四通道
+    image.paste(watermark, (iw, ih + 60), mask=paste_mask)  # pm是wm本身第四通道的像素值
+    """
+    模板图像的尺寸必须与变量image对应的图像尺寸一致。
+    如果变量mask对应图像的值为255，则模板图像的值直接被拷贝过来；如果变量mask对应图像的值为0，则保持当前图像的原始值。
+
+    alp => vmask / 255
+    vpix = alp * logo + (1-alp) * src
+    img = (src - alp * logo)/(1-alp)
+    """
+    return image, watermark, (iw, ih), paste_mask
+
+def dir_logorm_test(dir, pngp):
+    flist = os.listdir(dir)
+    for pp in flist:
+        if pp.endswith('.jpg'):
+            logo_clean_yy(
+                srcp=dir + pp,
+                pngp=pngp,
+                # savp="xout/"
+                savp="yout/"
+            )
+    print("Over!!!")
+
+def dir_logorm_4_png(dir, png):
+    flist = os.listdir(dir)
+    for pp in flist:
+        if pp.endswith('.jpg'):
+            logo_clean_by_png(  # 根据png对象，去除水印
+                srcp=dir + pp,
+                png=png,
+                savp="xout/"
+            )
+    # print("Over!!!")
+
+
+if __name__ == '__main__':
+    # dir_test()
+    # myslide()
+
+    # imgp = "_rev_/sy/jd0_logo_.jpg"
+    # logo_clean_yy(srcp=imgp, savp="_solution_/")
+    # logo_clean_yy_rsh(srcp=imgp, savp="_solution_/")
+    # logo_clean_yy(srcp="new/l4.jpg", savp="_solution_/")
+    # logo_clean_yy(srcp="_rev_/yy2_2014.jpg", savp="_solution_/")
+
+    # logo_clean_yy(srcp="ijd/jdm.jpg", savp="_solution_/")
+    # logo_clean_yy(srcp="ijd/l4.jpg", savp="_solution_/")
+
+    # dir = "ulogo_crop/test/"
+    dir = "_rev_/"
+    # dir = "JD/"
+
+    # dir_logorm_test(dir, pngp="opc/194_31_36_77.png")
+    # dir_logorm_test(dir, pngp="opc/666.png")  # 191,15,36, 77
+    # dir_logorm_test(dir, pngp="opc/190_26_36.png")  # 有红色
+    # dir_logorm_test(dir, pngp="opc/192_26_36.png")  # 190_26_36  有红色
+
+    # dir_logorm_test(dir, pngp="opc/199_16_34.png")
+    # dir_logorm_test(dir, pngp="opc/199_16_34_a1.png")
+    # dir_logorm_test(dir, pngp="opc/199_16_34_a2.png")
+    # dir_logorm_test(dir, pngp="opc/199_16_34_a3.png")
+    # dir_logorm_test(dir, pngp="opc/lkp_merge.png")  # 有细微红边
+    # dir_logorm_test(dir, pngp="opc/lkp_tmd.png")  # 腐蚀一圈
+    # dir_logorm_test(dir, pngp="opc/lkp_tmd2.png")  # 腐蚀两圈
+    # dir_logorm_test(dir, pngp="opc/lkp_tmd3.png")  # 腐蚀两圈
+    # dir_logorm_test(dir, pngp="opc/lkp_tmd6.png")  # 风翼对比后 【效果最好的图】
+
+    # dir_logorm_test(dir, pngp="opc/lkp_tmd7.png")  # o操作
+    # dir_logorm_test(dir, pngp="opc/lkp_tmd9.png")  # o操作
+
+    # dir_logorm_test(dir, pngp="opc/lkp_tmd10.png")  # 回归 tmd6  亮绿色是因为  没有logo本身透明度不够
+    # dir_logorm_test(dir, pngp="opc/lkp_tmd20.png")  # 只操作外圈时，内侧有亮边
+
+    # dir_logorm_test(dir, pngp="opc/tmd_fine_11.png")  # 微调1
+    # dir_logorm_test(dir, pngp="opc/tmd_fine_12.png")  # 回归 tmd6  亮绿色是因为  没有logo本身透明度不够
+    # dir_logorm_test(dir, pngp="opc/tmd_fine_13.png")  #
+    # dir_logorm_test(dir, pngp="opc/tmd_fine_14.png")  #
+    dir_logorm_test(dir, pngp="opc/tmd_fine_15.png")  #
+
+# -*- coding: utf-8 -*-
+# @Author  : guowei.yy@cai-inc.com
+# @File    : Put_water_mark.py
+# 水印添加工具【辅助对比测试】
+import os
+from PIL import Image, ImageDraw, ImageFont
+import matplotlib.pyplot as plt
+import numpy as np
+import cv2
+
+# 膨胀算法 Kernel
+_DILATE_KERNEL = np.array([[0, 0, 1, 0, 0],
+                           [0, 0, 1, 0, 0],
+                           [1, 1, 1, 1, 1],
+                           [0, 0, 1, 0, 0],
+                           [0, 0, 1, 0, 0]], dtype=np.uint8)
+
+class WatermarkRemover(object):
+    """"去除图片中的水印(Remove Watermark)"""
+    def __init__(self, verbose=True):
+        self.verbose = verbose
+        self.watermark_template_gray_img = None
+        self.watermark_template_mask_img = None
+        self.watermark_template_h = 0
+        self.watermark_template_w = 0
+        self.watermark_start_x = 0
+        self.watermark_start_y = 0
+
+    # 加载水印模板，以便后面批量处理去除水印
+    def load_watermark_template(self, watermark_template_filename):
+        self.generate_template_gray_and_mask(watermark_template_filename)
+
+    # 对图片进行膨胀计算
+    def dilate(self, img):
+        dilated = cv2.dilate(img, _DILATE_KERNEL)
+        return dilated
+
+    # 处理水印模板，生成对应的检索位图和掩码位图
+    def generate_template_gray_and_mask(self, watermark_template_filename):
+        img = cv2.imread(watermark_template_filename)  # 水印模板原图
+        # 灰度图、掩码图
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        _, mask = cv2.threshold(gray, 0, 255, cv2.THRESH_TOZERO + cv2.THRESH_OTSU)
+        _, mask = cv2.threshold(mask, 127, 255, cv2.THRESH_BINARY)
+        mask = self.dilate(mask)  # 使得掩码膨胀一圈，以免留下边缘没有被修复
+        # mask = self.dilate(mask)  # 使得掩码膨胀一圈，以免留下边缘没有被修复
+        # 水印模板原图去除非文字部分
+        img = cv2.bitwise_and(img, img, mask=mask)
+        # 后面修图时需要用到三个通道
+        mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
+        self.watermark_template_gray_img = gray
+        self.watermark_template_mask_img = mask
+        self.watermark_template_h = img.shape[0]
+        self.watermark_template_w = img.shape[1]
+        cv2.imwrite('ww-gray.jpg', gray)
+        cv2.imwrite('ww-mask.jpg', mask)
+        return gray, mask
+
+    # 从原图中寻找水印位置
+    def find_watermark(self, filename):
+        # Load the images in gray scale
+        gray_img = cv2.imread(filename, 0)
+        return self.find_watermark_from_gray(gray_img, self.watermark_template_gray_img)
+
+    # 从灰度图中寻找水印位置
+    def find_watermark_from_gray(self, gray_img, watermark_template_gray_img):
+        # Load the images in gray scale
+        method = cv2.TM_CCOEFF
+        # Apply template Matching
+        res = cv2.matchTemplate(gray_img, watermark_template_gray_img, method)
+        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
+        # If the method is TM_SQDIFF or TM_SQDIFF_NORMED, take minimum
+        if method in [cv2.TM_SQDIFF, cv2.TM_SQDIFF_NORMED]:
+            x, y = min_loc
+        else:
+            x, y = max_loc
+
+        return x, y, x + self.watermark_template_w, y + self.watermark_template_h
+
+    # 去除图片中的水印
+    def remove_watermark_raw(self, img, gray_mask):
+        """
+        :param img: 待去除水印图片位图
+        :param watermark_template_gray_img: 水印模板的灰度图片位图，用于确定水印位置
+        :param watermark_template_mask_img: 水印模板的掩码图片位图，用于修复原始图片
+        :return: 去除水印后的图片位图
+        """
+        self.watermark_template_gray_img, self.watermark_template_mask_img = gray_mask
+        # 寻找水印位置
+        img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        x1, y1, x2, y2 = self.find_watermark_from_gray(img_gray, self.watermark_template_gray_img)  # 水印模板的掩码
+        self.watermark_start_x = x1
+        self.watermark_start_y = y1
+        # 制作原图的水印位置遮板
+        mask = np.zeros(img.shape, np.uint8)
+        # watermark_template_mask_img = cv2.cvtColor(watermark_template_gray_img, cv2.COLOR_GRAY2BGR)
+        # mask[y1:y1 + self.watermark_template_h, x1:x1 + self.watermark_template_w] = watermark_template_mask_img
+        mask[y1:y2, x1:x2] = self.watermark_template_mask_img
+        mask = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
+
+        # 用遮板进行图片修复，使用 TELEA 算法
+        dst = cv2.inpaint(img, mask, 4, cv2.INPAINT_TELEA)
+        # cv2.imwrite('dst.jpg', dst)
+        return dst
+
+    # 【不可直接调用】： 去除图片中的水印
+    def remove_watermark(self, filename, output_filename=None):
+        """
+        :param filename: 待去除水印图片文件名称
+        :param output_filename: 去除水印图片后的输出文件名称
+        :return: 去除水印后的图片位图
+        """
+        # 读取原图
+        img = cv2.imread(filename)
+        dst = self.remove_watermark_raw(
+            img, (self.watermark_template_gray_img, self.watermark_template_mask_img)
+        )
+        if output_filename is not None:
+            cv2.imwrite(output_filename, dst)
+
+        return dst
+
+def get_loc(img_size, wm_size, mode='rb'):
+    print(img_size, wm_size)
+    x, y = img_size
+    w, h = wm_size
+    rst = (0, 0)
+    if mode == 'rb':
+        rst = (x - w, y - h)
+    elif mode == 'md':  # 正中
+        rst = ((x-w)//2, (y-h)//2)
+    return rst
+
+def wm1(img_src, wm_src, dest="out", loc=(50, 50), alpha=0.25):  # scale=5,
+    fig = plt.figure()
+    # watermark = plt.imread(wm_src)  # 读取水印
+    watermark = np.array(plt.imread(wm_src))  # 读取水印
+    # 调整水印大小
+    # new_size = [int(watermark.shape[0]/scale), int(watermark.shape[1]/scale), watermark.shape[2]]
+    # watermark = resize(watermark, new_size, mode='constant')
+    watermark[:, :, -1] *= alpha  # 调整水印透明度
+    plt.imshow(plt.imread(img_src))  # 读取图像
+    plt.figimage(watermark, loc[0], loc[1], zorder=10)  # 添加水印
+    plt.axis('off')  # 隐藏坐标轴
+    plt.savefig(dest + "/wm1_rst.jpg", dpi=fig.dpi, bbox_inches='tight')  # 保存图像
+    fig.show()
+    return fig
+
+def wm2(src, logo, out="out"):
+    img = cv2.imread(src)
+    logo = cv2.imread(logo)
+    logo = cv2.resize(logo, (350, 50))  # (100, 717)
+
+    inew = img - img
+    locp = get_loc(img.shape[:2], logo.shape[:2], mode='md')  # 位置，大小
+    inew[locp[0]: locp[0] + logo.shape[0], locp[1]:locp[1] + logo.shape[1]] = logo
+
+    inew = cv2.addWeighted(img, 1, inew, 0.4, 0)  # m1 x alph + m2 x beta + 1
+    cv2.imshow("hi", inew)
+    cv2.waitKey()
+    savep = out + '/wm-out.jpg'
+    cv2.imwrite(savep, inew)
+
+def i_water_maker(img):
+    logo = cv2.imread("logo.jpg")
+    # logo = cv2.resize(logo, (350, 50))  # (100, 717)
+    inew = img - img
+    locp = get_loc(img.shape[:2], logo.shape[:2], mode='md')  # 位置，大小
+    inew[locp[0]: locp[0] + logo.shape[0], locp[1]:locp[1] + logo.shape[1]] = logo  # 赋值（粘贴）
+    inew = cv2.addWeighted(img, 1, inew, 0.4, 0)  # 加权
+    return inew
+
+def wm3(src, logo):
+    im = Image.open(src)
+    mark = Image.open(logo)
+    layer = Image.new('RGBA', im.size, (0, 0, 0, 0))
+    layer.paste(mark, get_loc(im.size, mark.size, mode="md"))
+    out = Image.composite(layer, im, layer)
+    out.show()
+
+if __name__ == '__main__':
+    src = 'test_dewm/raw.png'
+    logo = 'logos/jd_logo_.png'
+
+    # wm1(src, logo)
+    # wm2(src, logo)
+    # wm3(src, logo)
+
+    # """
+    wr = WatermarkRemover()
+    wr.remove_watermark_raw(img="wm-out.jpg", gray_mask=wr.generate_template_gray_and_mask("logos/jd-logo.jpg"))
+    # """
+
+# -*- coding: utf-8 -*-
+# @Author  : guowei.yy@cai-inc.com
+# @File    : cv_wm.py
+# 古典水印处理测试
+from PIL import Image, ImageDraw
+import cv2
+import numpy as np
+import numpy
+
+def get_water(srcp, maskp, outp):  # 黑底白字
+    src = cv2.imread(srcp)  # 默认的彩色图(IMREAD_COLOR)方式读入原始图像
+    # black.jpg
+    mask = cv2.imread(maskp, cv2.IMREAD_GRAYSCALE)  # 灰度图(IMREAD_GRAYSCALE)方式读入水印蒙版图像
+    # 参数：目标修复图像; 蒙版图（定位修复区域）; 选取邻域半径; 修复算法(包括INPAINT_TELEA/INPAINT_NS， 前者算法效果较好)
+    # dst = cv2.inpaint(src, mask, 3, cv2.INPAINT_NS)
+    dst = cv2.inpaint(src, mask, 5, cv2.INPAINT_TELEA)  # Unrecognized or unsupported array type in function 'cvGetMat'
+    # cv2.imwrite(outp + '/rst1.jpg', dst)
+    cv2.imshow("hi", src)
+    cv2.imshow("fine", mask)
+    cv2.imshow("hello", dst)
+    cv2.waitKey()
+
+def get_water2(srcp, maskp, outp):
+    src = cv2.imread(srcp)
+    mask = cv2.imread(maskp)
+    save = numpy.zeros(src.shape, numpy.uint8)  # 创建一张空图像用于保存
+    for row in range(src.shape[0]):  # r
+        for col in range(src.shape[1]):  # g
+            for channel in range(src.shape[2]):  # b
+                if mask[row, col, channel] == 0:
+                    val = 0
+                else:
+                    reverse_val = 255 - src[row, col, channel]
+                    val = 255 - reverse_val * 256 / mask[row, col, channel]
+                    if val < 0:
+                        val = 0
+                save[row, col, channel] = val
+
+    # cv2.imwrite(outp + '/rst2.jpg', save)
+    cv2.imshow("hi", src)
+    cv2.imshow("fine", mask)
+    cv2.imshow("hello", save)
+    cv2.waitKey()
+
+def get_loc(img_size, wm_size, mode='rb'):
+    x, y = img_size
+    w, h = wm_size
+    rst = (0, 0)
+    if mode == 'rb':
+        rst = (x - w, y - h)
+    elif mode == 'md':  # 正中
+        rst = ((x-w)//2, (y-h)//2)
+    return rst
+
+def add_watermark_to_image(image, watermark, alph):
+    rgba_image = image.convert('RGBA')
+    rgba_watermark = watermark.convert('RGBA')
+    image_x, image_y = rgba_image.size
+    watermark_x, watermark_y = rgba_watermark.size
+
+    # 缩放图片
+    scale = 10
+    watermark_scale = max(image_x / (scale * watermark_x), image_y / (scale * watermark_y))
+    new_size = (int(watermark_x * watermark_scale), int(watermark_y * watermark_scale))
+    rgba_watermark = rgba_watermark.resize(new_size, resample=Image.ANTIALIAS)
+
+    # 透明度
+    # rgba_watermark_mask = rgba_watermark.convert("L").point(lambda x: min(x, 180))
+    rgba_watermark_mask = rgba_watermark.convert("L").point(lambda x: x*alph)
+    rgba_watermark.putalpha(rgba_watermark_mask)
+    watermark_x, watermark_y = rgba_watermark.size
+
+    rgba_image.paste(
+        rgba_watermark,
+        # get_loc((image_x, image_y), (watermark_x, watermark_y), mode='rb'),
+        get_loc((image_x, image_y), (watermark_x, watermark_y), mode='md'),
+        rgba_watermark_mask
+    )  # 水印位置
+
+    return rgba_image
+
+def test_lenawm(srcp, wmp, alph=0.3):
+    im_before = Image.open(srcp)
+    im_watermark = Image.open(wmp)
+    im_after = add_watermark_to_image(im_before, im_watermark, alph)  # 加水印
+
+    im_before.show()
+    im_after.show()
+    # im.save('im_after.jpg')
+
+# get_water()
+# get_water2()
+
+# 加水印
+# src = 'E:/__TestData__/cb14.jpg'
+# # logo = 'jd-logo.jpg'
+# logo = 'zcy_logo.png'
+# test_lenawm(src, logo, alph=0.8)
+
+def del_Wm(mode=1):
+    if mode == 1:
+        # 去水印 1
+        # srcp = "test_dewm/raw.png"
+        # mb = "test_dewm/wm_tmp.png"
+        srcp = "clean_test/aha_0.png"
+        mb = "clean_test/aha_0_logo.png"
+        get_water(srcp, mb, "test_dewm")
+
+    elif mode == 2:
+        # 去水印 2
+        srcp = "test_dewm/raw.png"
+        mb = "test_dewm/gw2.png"
+        get_water2(srcp, mb, "test_dewm")
+
+    else:
+        print("mode 不匹配！")
+
+def draw_min_rect_circle(img, cnts):  # conts = contours
+    img = np.copy(img)
+    for cnt in cnts:
+        x, y, w, h = cv2.boundingRect(cnt)
+        cv2.rectangle(img, (x, y), (x + w, y + h), (255, 0, 0), 2)  # blue
+
+        # min_rect = cv2.minAreaRect(cnt)  # min_area_rectangle
+        # min_rect = np.int0(cv2.boxPoints(min_rect))
+        # cv2.drawContours(img, [min_rect], 0, (0, 255, 0), 2)  # green
+        #
+        # (x, y), radius = cv2.minEnclosingCircle(cnt)
+        # center, radius = (int(x), int(y)), int(radius)  # for the minimum enclosing circle
+        # img = cv2.circle(img, center, radius, (0, 0, 255), 2)  # red
+    return img
+
+def extractJD(jd_logo_raw):
+    jd_raw = cv2.imread(jd_logo_raw)
+    cv2.imshow("jdraw", jd_raw)
+    cv2.waitKey()
+
+    jd_gray = cv2.cvtColor(jd_raw, cv2.COLOR_BGR2GRAY)
+
+    print(jd_raw.shape)
+    # 把jd扣出
+    # 把像素纯净化【可以先不做】
+    # 把非logo部分 透明化
+    # 制作一张新图，在logo的坐标位置内部，提取红色通道，red>125的保留且最大化255
+    # 其他通道为0，其他像素值为透明
+    b, g, r = cv2.split(jd_raw)
+    # cv2.imshow("g", g)
+    # cv2.imshow("b", b)
+    cv2.imshow("r", r)  # 红色通道
+    cv2.imshow("gray", jd_gray)  # 灰度通道
+    cv2.waitKey()
+
+    ret, jd_th = cv2.threshold(jd_gray, thresh=150, maxval=255, type=cv2.THRESH_BINARY)
+    print(jd_th)
+
+    contours, hierarchy = cv2.findContours(jd_th, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    # cv2.drawContours(jd_raw, contours, -1, (255, 0, 0), 1)
+
+    jd_fc = draw_min_rect_circle(jd_raw, contours)
+
+    merged = cv2.merge([b, g, r])
+    cv2.imshow("mgd", jd_fc)
+    cv2.waitKey()
+    pass
+
+# 做一个好的模版图
+def tichun_jdlogo(jd_logo_):
+    jd_raw = cv2.imread(jd_logo_)
+    kernel_size = (3, 3)
+    jd_rawg = cv2.GaussianBlur(jd_raw, kernel_size, 1.5)
+    cv2.imshow("jdraw", jd_raw)
+    b, g, r = cv2.split(jd_rawg)
+    cv2.waitKey()
+    # jd_gray = cv2.cvtColor(jd_raw, cv2.COLOR_BGR2GRAY)
+    ret, jd_th = cv2.threshold(r, thresh=200, maxval=255, type=cv2.THRESH_BINARY)  # 对r阈值化
+    # cv2.imshow("gary", jd_gray)
+    cv2.imshow("thed", jd_th)
+    alpha = np.ones(r.shape, dtype=r.dtype) * 100  # 0～255
+    alpha[alpha > 127] = 255
+    alpha[alpha < 127] = 0
+    b = np.zeros(r.shape, dtype=r.dtype)
+    g = np.zeros(r.shape, dtype=r.dtype)
+    merged = cv2.merge([b, g, r, alpha])
+    # kernel = np.array([[0, -1, 0],
+    #                    [-1, 5, -1],
+    #                    [0, -1, 0]])  # 定义卷积核
+    # m_hanced = cv2.filter2D(merged, -1, kernel)  # 进行卷积运算
+    merged_ = cv2.cvtColor(merged, cv2.COLOR_BGR2BGRA)
+    cv2.imshow("merged", merged_)
+    cv2.waitKey()
+    cv2.imwrite("jdlg.png", merged_)
+    pass
+
+# 灰度图，阈值化，
+if __name__ == '__main__':
+    del_Wm(1)
+    # extractJD("logos/jd_logo_raw.jpeg")
+    # tichun_jdlogo("logos/jd_logo_.png")
+
+# -*- coding: utf-8 -*-
+# @Author  : guowei.yy@cai-inc.com
+# @File    : wm_main.py
+# 水印处理接口服务 主函数
+import os
+import sys
+import logging
+import tornado.gen
+import tornado.web
+import tornado.ioloop
+import tornado.httpserver
+from tornado.concurrent import run_on_executor
+from concurrent.futures import ThreadPoolExecutor
+# 这个并发库在python3自带在python2需要安装sudo pip install futures
+import json
+import time
+import io
+import cv2
+import sys
+import requests
+import joblib
+import numpy as np
+import uuid
+import math
+from PIL import Image, ImageDraw, ImageFont, ImageEnhance, ImageChops
+from PIL import Image as pil_image
+from blind_watermark import WaterMark
+from configparser import ConfigParser
+from urllib.request import urlopen
+from argparse import ArgumentParser
+
+# 获取项目根目录
+PNAME = 'niepan'
+root_path = str(os.path.abspath(os.path.dirname(__file__)).rsplit(PNAME, 1)[0]) + PNAME
+wm_root = os.path.join(root_path, "watermark")
+sys.path.append(root_path)  # 添加包搜索路径
+from common.LanYue_dealFile import LanYue
+from common.cutils import getLogger, dealErr
+
+ini = root_path + '/cfgs/wm.ini'
+cp = ConfigParser()
+cp.read(ini, encoding='utf-8')  # , encoding='utf-8'
+LISTEN_PORT = cp.getint('base', 'port')
+PROCESS_NUM = cp.getint('base', 'pro_num')
+LOG_PATH = cp.get('base', 'log_path')
+SVM_MODEL = cp.get('base', 'svm')
+PNG = cp.get('base', 'png')
+PNG_ = cp.get('base', 'png1')
+
+ienv = os.environ.get('CFG')  # test, debug, dev-base, staging, prod
+envtag = os.environ.get('ENV_TAG')  # 容器平台的内置环境变量 envtag
+parser = ArgumentParser()
+parser.add_argument('--runENV', type=str, required=False)
+options = parser.parse_args()
+runenv = options.runENV  # py脚本运行变量
+print(
+    "k8s内置变量envtag:", str(envtag),
+    "运行变量runENV:", str(runenv),
+    "paas环境变量CFG:", str(ienv),
+)  # runenv, envtag, ienv
+
+if runenv != None:
+    ienv = runenv
+elif envtag != None:
+    ienv = envtag
+elif ienv == None:
+    ienv = "local"
+print("执行环境：", str(ienv))
+
+BASE_SIZE = os.environ.get('BASE_SIZE')
+if BASE_SIZE != None:
+    base_size = int(BASE_SIZE)  # 添加水印的基础size 32
+else:
+    base_size = cp.getint('logo', 'base_size')
+print("基础字体大小：", base_size)
+
+# cpkey = 'ly-{myenv}'.format(myenv=ienv)
+# LY_ID = cp.get('ly', cpkey)
+# LY_ACC = cp.get('ly', 'access_key')
+# LY_SEC = cp.get('ly', 'secret_key')
+
+# 默认直接采用真线揽月
+# LY_ID, LY_ACC, LY_SEC = "lanyue.zcygov.cn", "OW52GX4XO0KLnCBe", "uTRaQmmeoj2yy7pt"
+LY_ID, LY_ACC, LY_SEC = "lanyue.prod.cai-inc.com", "OW52GX4XO0KLnCBe", "uTRaQmmeoj2yy7pt"
+BUCK_NAME = cp.get('ly', 'buk')  # 揽月buck-name
+BUCK_PATH = cp.get('ly', 'buk_path')  # name下所属的路径
+
+# OSS 环境选取
+oss_prefix_ = {
+    # 'local': 'http://10.11.5.135:8080',
+    'local': 'http://10.11.9.100:8080',
+    'debug': 'http://file.test.zcygov.cn',  # oss-debug目前不可用，采用test-oss
+    'dev-base': 'http://file.test.zcygov.cn',  # 圭臬的dev-base中，采用test-oss
+    'test': 'http://file.test.zcygov.cn',
+    'staging': 'http://file-staging.zcygov.cn',
+    'prod': 'https://file.zcygov.cn',
+}
+
+oss_prefix = {
+    'local': 'http://10.11.9.100:8080',
+    'dev-base': 'http://file.test.zcygov.cn',  # 圭臬的dev-base中，采用test-oss
+    'test': 'http://web-file:8080',
+    'staging': 'http://web-file:18005',
+    'prod': 'http://web-file:18005',
+}
+
+def up2oss(localfile, data={"bizCode": "1121", "midPath": "rmlogo"}):
+    upload_files = {
+        "files": open(localfile, "rb")
+    }
+    res = requests.post(
+        url=oss_prefix[ienv] + "/zcy/obs/file2/upload",
+        data=data,
+        files=upload_files,
+        timeout=10
+    )
+    return json.loads(res.text)
+
+# 注意： data提交json-body参数，params提交表单参数. 最终采用files参数，携带（表单）参数
+# headers = {"content-type": "multipart/form-data;"}
+def up2oss_dst(updata):
+    res = requests.post(
+        url=oss_prefix[ienv] + "/zcy/obs/file2/upload",
+        files=updata,
+        timeout=10,
+    )
+    return json.loads(res.text)
+
+def downUri4oss(bizCode, fileId):
+    params = "bizCode={}&fileId={}".format(str(bizCode), str(fileId))
+    uri = oss_prefix[ienv] + "/zcy/obs/file2/download" + "?" + params
+    return uri
+
+def set_opacity(im, opacity):
+    '''设置水印透明度'''
+    assert opacity >= 0 and opacity <= 1
+    alpha = im.split()[3]
+    alpha = ImageEnhance.Brightness(alpha).enhance(opacity)
+    im.putalpha(alpha)
+    return im
+
+def crop_image(im):
+    '''裁剪图片边缘空白'''
+    bg = Image.new(mode='RGBA', size=im.size)
+    diff = ImageChops.difference(im, bg)
+    del bg
+    bbox = diff.getbbox()
+    if bbox: return im.crop(bbox)
+    return im
+
+def gen_txtmark(margs):
+    # TTF_FONT = u'./save/青鸟华光简琥珀.ttf'
+    # TTF_FONT = u'./save/simsun.ttc'
+    TTF_FONT = u'./save/simhei.ttf'
+    txt, color, size, opacity, space, angle = margs
+    '''生成mark图片，返回添加水印的函数'''
+    width = len(txt) * size  # 字体宽度, 可以在两倍的图片和字体上，进行上水印图和生成
+    mark = Image.new(mode='RGBA', size=(width, size))  # 创建水印图片(宽度、高度)
+    draw_table = ImageDraw.Draw(im=mark)  # 生成文字
+    draw_table.text(
+        xy=(0, 0), text=txt, fill=color, font=ImageFont.truetype(TTF_FONT, size=size)
+    )
+    del draw_table
+    mark = crop_image(mark)  # 裁剪空白
+    set_opacity(mark, opacity)  # 透明度
+    def mark_im(im):
+        ''' 在im图片上添加水印 im为打开的原图 '''
+        c = int(math.sqrt(im.size[0] * im.size[0] + im.size[1] * im.size[1]))  # 计算斜边长度
+        mark2 = Image.new(mode='RGBA', size=(c, c))  # 以斜边长度为宽高创建大图（旋转后大图才足以覆盖原图）
+
+        # 在大图上生成水印文字，此处mark为上面生成的水印图片
+        y, idx = 0, 0
+        while y < c:
+            x = -int((mark.size[0] + space) * 0.5 * idx)  # 制造x坐标错位
+            idx = (idx + 1) % 2
+            while x < c:  # 在该位置粘贴mark水印图片
+                mark2.paste(mark, (x, y))
+                x = x + mark.size[0] + space
+            y = y + mark.size[1] + space
+
+        mark2 = mark2.rotate(angle)  # 将大图旋转一定角度
+        if im.mode != 'RGBA':  # 在原图上添加大图水印
+            im = im.convert('RGBA')
+        im.paste(
+            mark2, (int((im.size[0] - c) / 2), int((im.size[1] - c) / 2)),  # 坐标
+            mask=mark2.split()[3]
+        )
+        del mark2
+        return im
+    return mark_im
+
+def addTxtMark(imagePath, margs):
+    '''添加水印，然后保存图片'''
+    mark = gen_txtmark(margs)  # 获取文本水印图
+    im = Image.open(imagePath)  # 打开原图
+    image = mark(im)  # 打上水印
+    return image
+
+# 固定字体大小， 相对行间距，相对颜色
+def addTxtMark_relative(imagePath, margs):
+    '''添加水印，然后保存图片'''
+    im = Image.open(imagePath)  # 打开原图
+    w, h = im.size
+    txt, color_, sz, opacity, space_, angle = margs
+    cmean = int(np.mean(np.array(im)))  # print('图片像素均值', cmean)  # 111偏深色
+    if cmean < 112:  # #666666, #999999, #CCCCCC
+        color = color_
+    elif cmean > 142:
+        color = '#666666'
+    else:
+        color = '#CCCCCC'
+    # 采用相对的 文本大小 与 文本间距
+    space = (h * 2000) // (173 * 50)  # 斜边5行文本, 10倍尺寸间距比
+    # size = space // 10 if space > 200 else 20  # size不小于6
+    size = space // 10 if space > 10*base_size else base_size   # base_size 26, 10倍间距比
+    size = int(size * sz / 100)  # 基础字号 按sz参数缩放比例
+    # print(space, size)
+    mark = gen_txtmark((txt, color, size, opacity, space, angle))  # 获取文本水印图
+    image = mark(im)  # 打上水印
+    return image
+
+class IndexHandler(tornado.web.RequestHandler):
+    """主路由处理类"""
+    #  对于不同的请求方式，我们用不同的方法
+    def get(self):
+        """对应http的get请求方式"""
+        fbak = "bad case please feedback: guowei.yy@cai-inc.com"
+        self.render('index.html', fbak=fbak)
+
+class RmlogoHandler(tornado.web.RequestHandler):
+
+    def post(self):
+        """post请求"""
+        self.get()
+
+    def get(self):
+        """get请求"""
+        t1 = time.perf_counter()
+        pic = self.get_argument('picuri')
+        puri = pic
+        pname = pic.rsplit('/', 1)[1]
+        if pname.__contains__('.'):
+            suffix = pname.rsplit('.', 1)[1]
+            if suffix.lower() in ['jpg', 'jpeg', 'png', 'bmp', 'gif'] and pic.startswith('http'):
+                try:
+                    image_bytes = urlopen(pic).read()
+                    pic = io.BytesIO(image_bytes)
+                except:
+                    msg = "网络或图源异常！"
+                    self.render('index.html', fbak=msg)
+
+                logo = 0
+                if "logo" in self.request.arguments:
+                    logo = int(self.get_query_argument('logo'))
+
+                img_rm = lr.logo_rm(pic, pname, logo)
+
+                t2 = time.perf_counter()
+                print("请求处理耗时: %s sec." % (t2 - t1), "~ ", puri)
+
+                fbak = "bad case please feedback: guowei.yy@cai-inc.com"
+                if img_rm != None:
+                    msg = "发现水印并消去，点击链接下载图像："
+                    self.render('index1.html', fbak=fbak, isrc=img_rm, msg=msg, pic=puri)
+                else:
+                    msg = "没有发现水印，PASS"
+                    self.render('index2.html', fbak=fbak, isrc=puri, msg=msg)
+            else:
+                msg = "图片链接地址异常！(确保首部有http，尾部有图片格式后缀)"
+                self.render('index.html', fbak=msg)
+        else:
+            msg = "图片链接地址异常！(确保有图片格式后缀)"
+            self.render('index.html', fbak=msg)
+
+class DownfileHandler(tornado.web.RequestHandler):
+
+    def get(self):
+        self.post()
+
+    def post(self):
+        """下载文件: 127.0.0.1:10937/downfile?filename=xxx"""
+        bpath = ""
+        if "bpath" in self.request.arguments:
+            bpath = self.get_argument('bpath')
+        fname = self.get_argument('fname')
+
+        self.set_header('Content-Type', 'application/octet-stream')
+        self.set_header('Content-Disposition', 'attachment; filename=' + fname)
+        buf_size = 4096
+        dpath = os.path.join(wm_root + "/" + bpath, fname)
+        print("下载地址：", dpath)
+        with open(dpath, 'rb') as f:
+            while True:
+                data = f.read(buf_size)
+                if not data:
+                    break
+                self.write(data)
+        self.finish()
+
+class Logo_remover():
+
+    def __init__(self):
+        self.hog = self.get_hog()
+        self.svm = joblib.load(SVM_MODEL)
+
+        self.bwm = WaterMark(password_wm=1, password_img=1)
+        self.basic_size = 32  # 文本水印的基本尺寸
+        self.basic_txt = 'zcy@cai-inc.com/'  # zcygov.cn, cai-inc.com
+        self.txt_color = (127, 127, 127)
+
+    def addTextWm(self, pic, text, loc, a, sz):  # =(loc, sz=100, r, g, b)  , tpic
+        img = Image.open(pic)
+
+        textSize = int((self.basic_size/100) * sz)  # sz=100默认
+        # loc解析为坐标
+        segk = 36  # 获取正中位置
+        bw, bh = img.size  # shape的宽高位置和pil的有区别！！！
+        sw, sh = int(len(text)*textSize), int(textSize)  # 水印尺寸
+        tx, ty = int((bw - sw) / 2), int((bh - sh) / 2)  # 默认为正中的水印
+        if loc == 1:  # 左上
+            tx, ty = int(bw // segk), int(bh // segk)
+        elif loc == 2:
+            tx, ty = int(bw * (segk - 1) // segk) - sw, int(bh // segk)
+        elif loc == 3:
+            tx, ty = int(bw // segk), int(bh * (segk - 1) // segk) - sh
+        elif loc == 4:
+            tx, ty = int(bw * (segk - 1) // segk) - sw, int(bh * (segk - 1) // segk) - sh
+        else:
+            pass
+
+        # 以下用text函数，直接打上text文本，作为水印
+        ttc = "save/simsun.ttc"  # 字体文件
+        draw = ImageDraw.Draw(img)  # 绘制对象
+        fontStyle = ImageFont.truetype(ttc, textSize, encoding="utf-8")  # 字体风格
+        draw.text((tx, ty), text, self.txt_color, font=fontStyle)
+        draw.text((tx, ty+textSize), self.basic_txt, self.txt_color, font=fontStyle)  # 下方添加
+        # img.save(tpic)
+        return img
+
+    def get_hog(self):  # 定义对象hog，同时输入定义的参数，剩下的默认即可
+        # hog 提取参数  # 128, 64, 8, 16
+        winSize = (32, 32)
+        blockSize = (16, 16)
+        blockStride = (4, 4)
+        cellSize = (8, 8)
+        nbins = 9
+        hog = cv2.HOGDescriptor(winSize, blockSize, blockStride, cellSize, nbins)
+        return hog
+
+    # 提取图像hog特征向量  (54, 373, 3)
+    def hog_extractor(self, hog, img):  # 计算hog特征
+        winStride = (8, 8)
+        padding = (8, 8)
+        hog_vector = hog.compute(img, winStride, padding).reshape((-1,))
+        return hog_vector
+
+    # 对图像进行logo分类
+    def isLogo(self, imgp):
+        ximg = Image.open(imgp)
+        xarr = np.array(ximg)
+        w, h = ximg.size
+        lw, lh = (373, 54)
+        iw, ih = int((w - lw) / 2), int((h - lh) / 2)
+        if w > lw and h > lh:  # 只有当img size支持获取完整logo区域时计算，否则视为无水印
+            ilogo = xarr[ih:ih + lh, iw:iw + lw, :3]
+            hogs = self.hog_extractor(self.hog, ilogo)  # hog 特征提取
+            cls = self.svm.predict([hogs])[0]  # svm 分类器
+        else:
+            cls = 0
+        return cls
+
+    # 根据某张图获取计算资源
+    def get_logorsc(self, imgp, pngp):
+        # img = Image.open(imgp) if isinstance(imgp, str) else imgp
+        img = Image.open(imgp) if not isinstance(imgp, Image.Image) else imgp
+        image = img.copy()
+
+        # watermark = Image.open(pngp)  # 水印路径，加在下侧 (如果是str则open，如果是pilimg则自赋值)
+        watermark = Image.open(pngp) if not isinstance(pngp, Image.Image) else pngp
+        if watermark.mode != 'RGBA':
+            alpha = Image.new('L', watermark.size, 255)  # 创建A通道  L表示8位灰度图
+            watermark.putalpha(alpha)  # pil RGB 如何转 BGR
+
+        # 获取正中位置
+        bw, bh = img.size  # shape的宽高位置和pil的有区别！！！
+        sw, sh = watermark.size
+        iw = int((bw - sw) / 2)
+        ih = int((bh - sh) / 2)
+        paste_mask = watermark.split()[3]
+        rgblogo = watermark.convert(mode="RGB")
+        return image, rgblogo, (iw, ih), paste_mask
+
+    # 加水印
+    # loc 位置, a 深度, sz 水印尺寸
+    def addinglogo(self, imgp, pngp, loc, a, sz):
+        img = Image.open(imgp) if not isinstance(imgp, Image.Image) else imgp
+        watermark = Image.open(pngp) if not isinstance(pngp, Image.Image) else pngp
+
+        if sz != 100:
+            # print("logo resizing...")
+            stw, sth = watermark.size  # 水印尺寸
+            ntw, nth = int(stw*sz/100.), int(sth*sz/100.)
+            watermark = watermark.resize((ntw, nth), pil_image.BICUBIC)  # 尺寸比例调整(100不变)
+
+        image = img.copy()  # 深拷贝，作为返回图像
+        alpha = Image.new('L', watermark.size, 255)  # 根据水印size创建A通道, L表示8位灰度图
+        if watermark.mode != 'RGBA':  # 如果水印图没有a通道，则加上纯1的a通道
+            watermark = watermark.convert('RGB')  # 先转rgb
+            watermark.putalpha(alpha)  # pil RGB 如何转 BGR
+
+        # RGBA四通道图片能否调用paste函数.
+        # if image.mode == 'RGBA':  # 如果水印图没有a通道，则加上纯1的a通道
+        #     image = image.convert('RGB')  # 根据水印size创建A通道, L表示8位灰度图
+
+        # 获取正中位置
+        segk = 36
+        bw, bh = img.size  # shape的宽高位置和pil的有区别！！！
+        sw, sh = watermark.size  # 水印尺寸
+        iw, ih = int((bw - sw) / 2), int((bh - sh) / 2)  # 默认为正中的水印
+        if loc == 1:  # 左上
+            iw, ih = int(bw // segk), int(bh // segk)
+        elif loc == 2:
+            iw, ih = int(bw*(segk-1) // segk)-sw, int(bh // segk)
+        elif loc == 3:
+            iw, ih = int(bw // segk), int(bh * (segk-1) // segk) - sh
+        elif loc == 4:
+            iw, ih = int(bw*(segk-1) // segk)-sw, int(bh * (segk-1) // segk) - sh
+
+        paste_mask = watermark.split()[3].point(lambda i: i * a)  # 第四通道
+        image.paste(watermark, (iw, ih), mask=paste_mask)  # pm是wm本身第四通道的像素值
+        # img.show()
+        # watermark.show()
+        # image.show()
+        return image
+
+    # 线上优化的demark算法
+    def rmlogo_computer(self, src, wm, local, pmask):
+        # print("线上优化的demark算法")
+        # src = np.array(src)
+        src = np.array(src.convert(mode="RGB"))  # 不管什么格式，强转为三通道
+        wm = np.array(wm)
+        pmask = np.array(pmask)
+        sw, sh = local
+        h, w = pmask.shape  # 要遍历的宽高： 53, 371
+
+        # 以下用矩阵计算
+        alp3 = np.expand_dims(pmask / 255, 2).repeat(3, axis=2)
+        simg = src[sh:sh + h, sw:sw + w, :]  # 取出目标区域
+        timg = (simg - wm * alp3) / (1 - alp3)
+        timg[timg < 0] = 0
+        timg[timg > 255] = 255
+        src[sh:sh + h, sw:sw + w, :] = timg
+        return np.asarray(src, dtype=np.uint8)
+
+    def rmcomp(self, srcp, pngp):
+        ilogo = Image.open(srcp) if not isinstance(srcp, Image.Image) else srcp
+        _, wm, (iw, ih), pmask = self.get_logorsc(srcp, pngp)  # 获取计算资源
+        dst = self.rmlogo_computer(ilogo, wm, (iw, ih), pmask)  # 除原生水印  214 373
+        idst = Image.fromarray(dst)
+        return idst
+
+    # http://img14.360buyimg.com/n0/jfs/t1/69580/27/2399/288410/5d0b566cEd2791b87/7921ba75bd204e90.png
+    # png 测试图 出现问题！
+    def logo_clean(self, srcp, pngp):  # , savp, pname
+        # img = Image.open(srcp) if isinstance(srcp, str) else srcp  # '_io.BytesIO' object
+        img = Image.open(srcp) if not isinstance(srcp, Image.Image) else srcp
+
+        if img.mode == "RGBA":
+            logging.info("对于PNG格式请求，执行实例mask消去")
+            r, g, b, a = img.split()
+            alp = np.array(a)
+            th = 254
+            alp[alp < th] = 0  # 千万要注意 np阈值化时的顺序
+            alp[alp >= th] = 1
+            mask = np.tile(np.expand_dims(alp, 2), (1, 1, 3))
+            w, h = img.size
+            bg = np.ones([w, h, 3]) * 255
+            ct = Image.merge('RGB', (r, g, b))  # 构造原图示例三通道图
+            dst = self.rmcomp(ct, pngp)  # 对ct进行计算
+            rst = bg * (1 - mask) + dst * mask  # 图像
+            rst[rst < 0] = 0
+            rst[rst > 255] = 255
+            idst = Image.fromarray(np.asarray(rst, dtype=np.uint8)).convert('RGB')
+        else:
+            idst = self.rmcomp(img, pngp)  # 对ct进行计算
+        return idst
+
+    # 分类 + 去水印
+    def logo_rm(self, imgp, pname, logo=0):
+        pngp = PNG if logo == 0 else PNG_
+        cls = self.isLogo(imgp)  # hog+svm分类
+        if cls == 1:
+            dst = self.logo_clean(imgp, pngp)  # 去水印，返回PIL-img
+            # spic = pname.split(".")
+            spic = [pname.split(".")[0], 'jpg']  # 一律保存为jpg
+            dsavep = "static" + "/dst/" + spic[0] + "_rm." + spic[1]
+            dst.save(dsavep)
+
+            rsavep = "static" + "/" + "cur_comp." + spic[1]
+            ilogo = Image.open(imgp).convert('RGB')
+            w, h = ilogo.size
+            out_image = np.zeros((h, w * 2, 3), dtype=np.uint8)
+            out_image[:, :w] = ilogo  # 原图
+            out_image[:, w:] = dst
+            iout = Image.fromarray(out_image)
+            iout.save(rsavep)
+            img_rm = spic[0] + "_rm." + spic[1]  # 返回rm图像名
+        else:
+            print("没有水印，pass")
+            rsavep = None
+            img_rm = None
+
+        return img_rm
+
+LOGOS = ['none', 'jd', 'tianmao', 'other']
+isMSG = ['no logo', 'have logo', 'invalid url', 'resource error']
+class IslogoHandler(tornado.web.RequestHandler):
+    executor = ThreadPoolExecutor(30)
+
+    @tornado.web.asynchronous
+    @tornado.gen.coroutine
+    def get(self):
+        res = yield self.handle()
+        self.write(res)
+
+    @tornado.gen.coroutine
+    def post(self):
+        res = yield self.handle()
+        self.write(res)
+
+    @run_on_executor
+    def handle(self):
+        """get.post 统一处理
+        post:    get_argument()
+        get:     get_query_argument()
+        """
+        t = time.perf_counter()
+        pic = self.get_argument('picuri')
+        uri = pic
+        pname = pic.rsplit('/', 1)[1]
+        if pname.__contains__('.'):
+            suffix = pname.rsplit('.', 1)[1]
+            if suffix.lower() in ['jpg', 'jpeg', 'png', 'bmp', 'gif'] and pic.startswith('http'):
+                try:
+                    image_bytes = urlopen(pic).read()
+                    pic = io.BytesIO(image_bytes)
+
+                    cls = lr.isLogo(pic)  # hog + svm分类, 返回int值，1/0
+                    code = 200 + cls
+                except:
+                    cls = -1
+                    code = 400
+            else:
+                cls = -2
+                code = 501
+        else:
+            cls = -2
+            code = 502
+        # 1 有水印，0 无水印，-1 图源拉取异常，-2 链接 无效/不合法
+        waste_time = "耗时: %s sec." % (time.perf_counter() - t)
+        logging.info("islogo请求uri:" + uri + ", " + waste_time)  # 记录处理日志
+        result = {}  # 以下组装返回参数
+        result['success'] = True if int(code) < 300 else False
+        result['code'] = int(code)
+        result['massage'] = isMSG[cls]  # code 消息 (-2,-1,0,1)
+        result['result'] = 'true' if cls == 1 else 'false'
+        cls = 0 if cls <= 0 else cls
+        result['marktype'] = LOGOS[cls]  # 目前只能判断JD
+        resp = json.dumps(result)
+        logging.info("请求响应:" + str(resp))
+        return resp
+
+deMSG = ['delogo upload fail', 'delogo success', 'no logo', 'invalid url', 'resource error or algorithm']
+class Delogo2lyHandler(tornado.web.RequestHandler):
+    executor = ThreadPoolExecutor(30)
+
+    @tornado.web.asynchronous
+    @tornado.gen.coroutine
+    def get(self):
+        res = yield self.handle()
+        self.write(res)
+
+    @tornado.gen.coroutine
+    def post(self):
+        res = yield self.handle()
+        self.write(res)
+
+    @run_on_executor
+    def handle(self):
+        """get.post 统一处理
+        post:    get_argument()
+        get:     get_query_argument()
+        """
+        t = time.perf_counter()
+        pic = self.get_argument('picuri')
+        pic = dealErr(pic)
+        uri = str(pic)
+
+        mtype = 'jd'  # 预留参数，JD表示要去的是JD水印，与选用的png相关
+        if 'marktype' in self.request.arguments:
+            mtype = self.get_argument('marktype')
+        pname = uri.rsplit('/', 1)[1]
+        result = {}  # 返回参数
+        if pname.__contains__('.'):
+            fname, suffix = tuple(pname.rsplit('.', 1))
+            objname = fname + "_rm." + suffix
+            if suffix.lower() in ['jpg', 'jpeg', 'png', 'bmp', 'gif'] and pic.startswith('http'):
+                try:
+                    image_bytes = urlopen(pic).read()
+                    pic = io.BytesIO(image_bytes)
+                    pngp = PNG
+
+                    # 去水印之前，进行判断
+                    if lr.isLogo(pic) == 1:  # 如果有水印，则消去
+                        dst = lr.logo_clean(pic, pngp)  # 去水印, 返回PIL图像对象
+
+                        filePath = "static/dst/" + objname
+                        dst.save(filePath)  # 先保存到本地
+
+                        objname = BUCK_PATH + objname
+                        flag = ly.upload_img(filePath, BUCK_NAME, objname, imgext=suffix)  # 再上传到揽月
+                        # print("上传完毕：", flag)  # 上传问题修复了，因为获取ly方法没有返回值
+
+                        result['oss'] = LY_ID
+                        result['bucket'] = BUCK_NAME
+                        result['object'] = objname
+                        # result['url'] = 'http://lanyue.prod.cai-inc.com/' + BUCK_NAME + '/' + objname
+                        # result['url'] = 'http://lanyue.zcygov.cn/' + BUCK_NAME + '/' + objname
+                        result['url'] = 'http://' + LY_ID + '/' + BUCK_NAME + '/' + objname
+
+                        cls = 1 if flag else 0
+                        code = 200 if cls == 1 else 402  # 402是文件上传异常
+                    else:  # 没有水印，则原url返回
+                        result['url'] = uri
+                        result['object'] = pname
+
+                        cls = 2  # no logo
+                        code = 204  # 表示请求成功，但是图像连接无水印
+                except:
+                    print("计算错误、连接异常或图源不可获取！")
+                    cls = -1
+                    code = 400
+            else:
+                cls = -2
+                code = 501
+        else:
+            cls = -2
+            code = 502
+        waste_time = "耗时: %s sec." % (time.perf_counter() - t)
+        logging.info("delogo请求uri:" + uri + ", marktype:" + str(mtype) + ", 耗时:" + waste_time)
+        # 记录处理日志
+
+        result['success'] = True if int(code) < 300 else False
+        result['code'] = int(code)
+        result['massage'] = deMSG[cls]
+        resp = json.dumps(result)
+        logging.info("请求响应:" + str(resp))
+        return resp
+
+# 提供外部演示应用的接口【会有一个分类判断确保演示效果】
+class DelogoapiHandler(tornado.web.RequestHandler):
+    executor = ThreadPoolExecutor(100)
+
+    @tornado.web.asynchronous
+    @tornado.gen.coroutine
+    def get(self):
+        res = yield self.handle()
+        self.write(res)
+
+    @tornado.gen.coroutine
+    def post(self):
+        res = yield self.handle()
+        self.write(res)
+
+    @run_on_executor
+    def handle(self):
+        """get.post 统一处理
+        post:    get_argument()
+        get:     get_query_argument()
+        """
+        t0 = time.perf_counter()
+        waste_time = ""
+        pic = self.get_argument('picuri')
+        pic = dealErr(pic)
+        uri = str(pic)
+        mtype = 'jd'  # 预留参数，JD表示要去的是JD水印，与选用的png相关
+        if 'marktype' in self.request.arguments:
+            mtype = self.get_argument('marktype')
+        pname = uri.rsplit('/', 1)[1]
+        result = {}  # 返回参数
+        if pname.__contains__('.'):
+            fname, suffix = tuple(pname.rsplit('.', 1))
+            objname = fname + "_rm." + suffix
+            if suffix.lower() in ['jpg', 'jpeg', 'png', 'bmp', 'gif'] and pic.startswith('http'):
+                try:
+                    image_bytes = urlopen(pic).read()
+                    pic = io.BytesIO(image_bytes)
+                    pngp = PNG
+                    t1 = time.perf_counter()
+                    dst = lr.logo_clean(pic, pngp)  # 去水印, 返回PIL图像对象
+                    t2 = time.perf_counter()
+                    filePath = "static/dst/" + objname
+                    dst.save(filePath)  # 先保存到本地
+                    t3 = time.perf_counter()
+                    rstj = up2oss(filePath)  # 上传至OSS，返回新连接
+                    result['url'] = rstj['result']['downloadUrl']
+                    result['fileId'] = rstj['result']['fileId']
+                    result['fileName'] = rstj['result']['fileName']
+                    cls = 1 if rstj['success'] else 0
+                    code = 200 if cls == 1 else 402  # 202是文件重复上传，返回旧连接
+                    t4 = time.perf_counter()
+                    waste_time = "耗时: 拉图%s, 消去%s, 保存%s, 上传%s." % (
+                        t1 - t0, t2 - t1, t3 - t2, t4 - t3
+                    )
+                except Exception as e:
+                    print("计算错误、连接异常或图源不可获取！" + str(e))
+                    cls = -1
+                    code = 400
+            else:
+                cls = -2
+                code = 501
+        else:
+            cls = -2
+            code = 502
+        logging.info("delogoapi:" + uri + ", marktype:" + str(mtype) + ", 耗时:\n" + waste_time)
+        result['success'] = True if int(code) < 300 else False
+        result['code'] = int(code)
+        result['massage'] = deMSG[cls]
+        resp = json.dumps(result)
+        logging.info("请求响应:" + str(resp))
+        return resp
+
+# 提供外部演示应用的接口【会有一个分类判断确保演示效果】
+class FastdelogoHandler(tornado.web.RequestHandler):
+
+    async def get(self):
+        result = await tornado.ioloop.IOLoop.current().run_in_executor(None, self.ada_delogo)
+        self.write(result)
+
+    async def post(self):
+        result = await tornado.ioloop.IOLoop.current().run_in_executor(None, self.ada_delogo)
+        self.write(result)
+
+    def ada_delogo(self):  # 并发执行
+        t0 = time.perf_counter()
+        waste_time = ""
+        pic = self.get_argument('picuri')
+        pic = dealErr(pic)
+        uri = str(pic)
+        mtype = 'jd'  # 预留参数，JD表示要去的是JD水印，与选用的png相关
+        if 'marktype' in self.request.arguments:
+            mtype = self.get_argument('marktype')
+        pname = uri.rsplit('/', 1)[1]
+        result = {}  # 返回参数
+        if pname.__contains__('.'):
+            fname, suffix = tuple(pname.rsplit('.', 1))
+            objname = fname + "_rm." + suffix
+            filePath = "static/dst/" + objname
+            if suffix.lower() in ['jpg', 'jpeg', 'png', 'bmp', 'gif'] and pic.startswith('http'):
+                try:
+                    image_bytes = urlopen(pic).read()
+                    pic = io.BytesIO(image_bytes)
+                    pngp = PNG
+                    t1 = time.perf_counter()
+                    dst = lr.logo_clean(pic, pngp)  # 去水印, 返回PIL图像对象
+                    t2 = time.perf_counter()
+                    dst.save(filePath)  # 先保存到本地
+                    t3 = time.perf_counter()
+                    rstj = up2oss(filePath)  # 上传至OSS，返回新连接
+                    result['url'] = rstj['result']['downloadUrl']
+                    result['fileId'] = rstj['result']['fileId']
+                    result['fileName'] = rstj['result']['fileName']
+                    cls = 1 if rstj['success'] else 0
+                    code = 200 if cls == 1 else 402  # 202是文件重复上传，返回旧连接
+                    t4 = time.perf_counter()
+                    waste_time = "耗时: 拉图%s, 消去%s, 保存%s, 上传%s." % (
+                        t1 - t0, t2 - t1, t3 - t2, t4 - t3
+                    )
+                except Exception as e:
+                    print("计算错误、连接异常或图源不可获取！" + str(e))
+                    cls = -1
+                    code = 400
+            else:
+                cls = -2
+                code = 501
+        else:
+            cls = -2
+            code = 502
+        logging.info("delogoapi:" + uri + ", marktype:" + str(mtype) + ", 耗时:\n" + waste_time)
+        result['success'] = True if int(code) < 300 else False
+        result['code'] = int(code)
+        result['massage'] = deMSG[cls]
+        resp = json.dumps(result)
+        logging.info("请求响应:" + str(resp))
+        return resp
+
+# 提供最快速的外部调用接口【免分类 直接去水印】
+class DelogoHandler(tornado.web.RequestHandler):
+    executor = ThreadPoolExecutor(30)
+
+    @tornado.web.asynchronous
+    @tornado.gen.coroutine
+    def get(self):
+        res = yield self.handle()
+        self.write(res)
+
+    @tornado.gen.coroutine
+    def post(self):
+        res = yield self.handle()
+        self.write(res)
+
+    @run_on_executor
+    def handle(self):
+        t = time.perf_counter()
+        pic = self.get_argument('picuri')  # 不区分post/get传递方式 [但实际必须得是get?]
+        pic = dealErr(pic)
+        uri = str(pic)
+        mtype = 'jd'  # 预留参数，JD表示要去的是JD水印，与选用的png相关
+        if 'marktype' in self.request.arguments:
+            mtype = self.get_argument('marktype')
+        pname = uri.rsplit('/', 1)[1]
+        result = {}  # 返回参数
+        if pname.__contains__('.'):
+            fname, suffix = tuple(pname.rsplit('.', 1))
+            objname = fname + "_rm." + suffix
+            if suffix.lower() in ['jpg', 'jpeg', 'png', 'bmp', 'gif'] and pic.startswith('http'):
+                try:
+                    image_bytes = urlopen(pic).read()
+                    pic = io.BytesIO(image_bytes)
+                    pngp = PNG
+
+                    # 去水印之前，进行判断
+                    if lr.isLogo(pic) == 1:  # 如果有水印，则消去
+                        dst = lr.logo_clean(pic, pngp)  # 去水印, 返回PIL图像对象
+                        filePath = "static/dst/" + objname
+                        dst.save(filePath)  # 先保存到本地
+                        rstj = up2oss(filePath)  # 上传至OSS，返回新连接
+                        result['url'] = rstj['result']['downloadUrl']
+                        result['fileId'] = rstj['result']['fileId']
+                        result['fileName'] = rstj['result']['fileName']
+                        cls = 1 if rstj['success'] else 0
+                        code = 200 if cls == 1 else 402  # 202是文件重复上传，返回旧连接
+                    else:  # 若无水印，返回原图uri
+                        result['url'] = uri
+                        result['fileId'] = pname
+                        result['fileName'] = pname
+                        cls = 2  # no logo
+                        code = 204  # 表示请求成功，但是图像连接无水印
+                except Exception as e:
+                    print("计算错误、连接异常或图源不可获取！" + str(e))
+                    cls = -1
+                    code = 400
+            else:
+                cls = -2
+                code = 501
+        else:
+            cls = -2
+            code = 502
+        waste_time = "耗时: %s sec." % (time.perf_counter() - t)
+        logging.info("delogo请求uri:" + uri + ", marktype:" + str(mtype) + ", 耗时:" + waste_time)
+        result['success'] = True if int(code) < 300 else False
+        result['code'] = int(code)
+        result['massage'] = deMSG[cls]
+        resp = json.dumps(result)
+        logging.info("请求响应:" + str(resp))
+        return resp
+
+lgMSG = ['adding logo fail.', 'adding logo success.']
+# lgZCY = "http://lanyue.prod.cai-inc.com/niepan/np-watermark/zcy.png"
+lgZCY = "http://lanyue.zcygov.cn/niepan/np-watermark/zcy.png"
+# 提供加水印接口
+class AddlogoHandler(tornado.web.RequestHandler):
+    executor = ThreadPoolExecutor(30)
+
+    @tornado.web.asynchronous
+    @tornado.gen.coroutine
+    def get(self):
+        res = yield self.handle()
+        self.write(res)
+
+    @tornado.gen.coroutine
+    def post(self):
+        res = yield self.handle()
+        self.write(res)
+
+    @run_on_executor
+    def handle(self):
+        t = time.perf_counter()
+        pic = self.get_argument('picuri')
+        logopic = lgZCY  # 如果传递了logo参数，则采用传参；如果为传递则采用默认logo
+        if "logo" in self.request.arguments:  # 优先取logo
+            logopic = self.get_argument('logo')
+        textwm = ''
+        if "text" in self.request.arguments:
+            textwm = str(self.get_argument('text'))
+        pic = dealErr(pic)
+        logopic = dealErr(logopic)
+        puri = str(pic)
+        luri = str(logopic)
+        loc, a, sz = 0, 3, 100  # loc=01234, a=1369, sz尺寸比例，默认100不变
+        if "loc" in self.request.arguments:
+            lloc = int(self.get_argument('loc'))
+            loc = lloc if lloc in [0, 1, 2, 3, 4] else loc
+        if "a" in self.request.arguments:
+            aa = int(self.get_argument('a'))
+            a = aa if aa > 0 and aa < 10 else a
+        if "sz" in self.request.arguments:
+            ssz = int(self.get_argument('sz'))
+            sz = ssz if ssz > 0 else sz
+        up = 'ly'  # ly/oss
+        if "up" in self.request.arguments:
+            up = str(self.get_argument('up'))
+        logging.info("辅助参数，位置：" + str(loc) + ", 深度:" + str(a) + ", 尺寸:" + str(sz))
+        pname = puri.rsplit('/', 1)[1]
+        result = {}  # 返回参数
+        if pname.__contains__('.'):
+            fname, suffix = tuple(pname.rsplit('.', 1))  # 原图文件名
+            prefix = str(uuid.uuid4())
+            objname = prefix + '.' + suffix
+            print(objname)
+            if suffix.lower() in ['jpg', 'jpeg', 'png', 'bmp', 'gif'] and pic.startswith('http'):
+                try:
+                    logging.info("网络拉图中...")
+                    image_bytes = urlopen(pic, timeout=10).read()
+                    pic = io.BytesIO(image_bytes)
+                    image_bytes_ = urlopen(logopic, timeout=10).read()
+                    logopic = io.BytesIO(image_bytes_)
+                    # 默认将水印打在正中 （后期可加：01234 四个角落 + 中心点）
+                    if textwm != '':  # 优先取text参数，如果有text，则不会加图片水印
+                        # loc = 01234:定点文本水印
+                        # rimg = lr.addTextWm(pic, textwm, loc, 0.1 * a, sz)  # =(loc, size, r, g, b)
+                        # color, size, opacity, space, angle = '#A9A9A9', 32, 0.3, 200, 30
+                        # size = int(18 * sz / 100)  # 24为基础size
+                        opacity = 0.1 * a
+                        margs = (textwm, '#999999', sz, opacity, 200, 30)  # 间距200，角度30
+                        # rimg = addTxtMark(pic, margs)
+                        rimg = addTxtMark_relative(pic, margs)
+                        objname = prefix + '.' + 'png'  # 文本水印，必存png
+                    else:  # 默认0.3的透明度（后期可分为，1369）
+                        rimg = lr.addinglogo(pic, logopic, loc, 0.1 * a, sz)
+                        # 加水印 loc 位置参数，a深度参数
+                    logging.info("添加图片水印完毕...")
+                    filePath = "static/lg/" + objname
+                    rimg.save(filePath)  # 先保存到本地
+                    if up == 'oss':  # 上传oss
+                        rstj = up2oss(filePath)  # 上传至OSS，返回新连接
+                        result['result'] = rstj['result']['downloadUrl']
+                    else:  # 上传ly
+                        objname = BUCK_PATH + objname
+                        iurl = ly.upimg(filePath, BUCK_NAME, objname, imgext=suffix)  # 再上传到揽月
+                        result['result'] = iurl
+                    cls = 1
+                    code = 200
+                except Exception as e:
+                    print("计算错误、连接异常或图源不可获取！" + str(e))
+                    cls = 0
+                    code = 400
+            else:
+                cls = 0
+                code = 501
+        else:
+            cls = 0
+            code = 502
+        waste_time = "耗时: %s sec." % (time.perf_counter() - t)
+        logging.info("addlogo请求uri:" + puri + ", 水印uri:" + luri + ", 耗时:" + waste_time)
+        result['success'] = True if int(code) < 300 else False
+        result['code'] = code
+        result['massage'] = lgMSG[cls]
+        resp = json.dumps(result)
+        logging.info("请求响应:" + str(resp))
+        return resp
+
+# blgZCY = "http://lanyue.prod.cai-inc.com/niepan/np-watermark/tmp/cai-blg.png"
+blgZCY = "http://lanyue.zcygov.cn/niepan/np-watermark/tmp/cai-blg.png"
+# 加盲水印 + 提取盲水印: mode= add/ext
+class BlindlogoHandler(tornado.web.RequestHandler):
+    executor = ThreadPoolExecutor(30)
+
+    @tornado.web.asynchronous
+    @tornado.gen.coroutine
+    def get(self):
+        res = yield self.handle()
+        self.write(res)
+
+    @tornado.gen.coroutine
+    def post(self):
+        res = yield self.handle()
+        self.write(res)
+
+    @run_on_executor
+    def handle(self):
+        t = time.perf_counter()
+        pic = self.get_argument('picuri')
+        logopic = blgZCY  # 如果传递了logo参数，则采用传参；如果为传递则采用默认logo
+        if "logo" in self.request.arguments:
+            logopic = self.get_argument('logo')
+        pic = dealErr(pic)
+        logopic = dealErr(logopic)
+        puri = str(pic)
+        luri = str(logopic)
+        mode = 'add'  # add加盲水印, ext提取盲水印（返回提取结果）
+        if "mode" in self.request.arguments:
+            mode = str(self.get_argument('mode'))
+        up = 'ly'  # ly/oss
+        if "up" in self.request.arguments:
+            up = str(self.get_argument('up'))
+        logging.info("辅助参数，mode：" + str(mode) + ", 存储:" + str(up) + ", 盲水印源:" + str(logopic))
+        pname = puri.rsplit('/', 1)[1]
+        # lname = luri.rsplit('/', 1)[1]
+        result = {}  # 返回参数
+        if pname.__contains__('.'):
+            fname, suffix = tuple(pname.rsplit('.', 1))  # 原图文件名
+            objname = str(uuid.uuid4()) + '.' + suffix  # 输出文件
+            outfile = "static/blg/" + objname
+            picname = "static/blg/" + pname  # print(objname)  # 参数图1
+            lgname = "static/blg/" + 'tmp-logo.png'  # print(objname)  # 参数图2
+            if suffix.lower() in ['jpg', 'jpeg', 'png', 'bmp', 'gif'] and pic.startswith('http'):
+                try:
+                    logging.info("网络拉图中...")
+                    image_bytes = urlopen(pic, timeout=10).read()
+                    pic = io.BytesIO(image_bytes)
+                    Image.open(pic).save(picname)  # 存到本地
+                    image_bytes_ = urlopen(logopic, timeout=10).read()
+                    logopic = io.BytesIO(image_bytes_)
+                    Image.open(logopic).save(lgname)  # 存到本地
+                    if mode == 'add':  # 打上盲水印
+                        lr.bwm.read_img(picname)  # 读取原图
+                        lr.bwm.read_wm(lgname)  # 读取水印
+                        lr.bwm.embed(outfile)  # 此时已经存在本地
+                    elif mode == 'ext':  # 提取盲水印
+                        lr.bwm.extract(
+                            filename=picname, wm_shape=(87, 87),
+                            out_wm_name=outfile
+                        )  # 此时已经存在本地
+                    logging.info("添加/提取 盲水印完毕...")
+                    if up == 'oss':  # 上传oss
+                        rstj = up2oss(outfile)  # 上传至OSS，返回新连接
+                        print(rstj)
+                        result['result'] = rstj['result']['downloadUrl']
+                    else:  # 上传ly
+                        objname = BUCK_PATH + objname
+                        iurl = ly.upimg(outfile, BUCK_NAME, objname, imgext=suffix)  # 再上传到揽月
+                        result['result'] = iurl
+                    cls = 1
+                    code = 200
+                except Exception as e:
+                    print("计算错误、连接异常或图源不可获取！" + str(e))
+                    cls = 0
+                    code = 400
+            else:
+                cls = 0
+                code = 501
+        else:
+            cls = 0
+            code = 502
+        waste_time = "耗时: %s sec." % (time.perf_counter() - t)
+        logging.info("请求uri:" + puri + ", 水印uri:" + luri + ", 耗时:" + waste_time)
+        result['success'] = True if int(code) < 300 else False
+        result['code'] = code
+        result['massage'] = lgMSG[cls]
+        resp = json.dumps(result)
+        logging.info("请求响应:" + str(resp))
+        return resp
+
+#  提供最快速的  面向业务的  restful接口
+class FastaddlogoHandler(tornado.web.RequestHandler):
+    executor = ThreadPoolExecutor(30)
+
+    @tornado.web.asynchronous
+    @tornado.gen.coroutine
+    def get(self):
+        res = yield self.handle()
+        self.write(res)
+
+    @tornado.gen.coroutine
+    def post(self):
+        res = yield self.handle()
+        self.write(res)
+
+    @run_on_executor
+    def handle(self):
+        t = time.perf_counter()
+        jsbody = json.loads(self.request.body)
+        # print(jsbody)
+        sourcefid = jsbody['sourceFileId']
+        bizcode = jsbody['bizCode']
+        targetfid = jsbody['waterMarkerFileId']
+        textwm = jsbody['waterMarkerContent']
+        downuri = downUri4oss(bizcode, sourcefid)
+        image_bytes = urlopen(downuri, timeout=10).read()
+        pic = io.BytesIO(image_bytes)
+        up = jsbody['up'] if 'up' in jsbody.keys() else 'oss'  # 当前默认采用 oss
+        # up = 'oss'  # 当前默认采用 oss
+        # if "up" in self.request.arguments:
+        #     up = str(self.get_argument('up'))
+        loc, a, sz = 0, 2, 100  # loc=01234, a=1369, sz尺寸比例，默认100不变
+        if "loc" in self.request.arguments:
+            lloc = int(self.get_argument('loc'))
+            loc = lloc if lloc in [0, 1, 2, 3, 4] else loc
+        if "a" in self.request.arguments:
+            aa = int(self.get_argument('a'))
+            a = aa if aa > 0 and aa < 10 else a
+        if "sz" in self.request.arguments:
+            ssz = int(self.get_argument('sz'))
+            sz = ssz if ssz > 0 else sz
+        if 'size' in jsbody.keys():  # 优先用js中的size参数
+            sz = int(jsbody['size'])
+        logging.info("fast-addlogo 接受参数，body: {}, loc：{}, OSS-fid: {}, 尺寸: {}".format(
+            str(self.request.body), str(loc), str(a), str(sz)
+        ))
+        result = {}  # 返回参数
+        suffix = 'png'
+        loginfo = ''
+        try:
+            if textwm != None and textwm != '':  # 优先取text参数，如果有text，则不会加图片水印
+                loginfo = loginfo + "》添加文本水印完毕..."
+                # size = int(20 * sz / 100)  # 24为基础size
+                # 深灰到浅灰 '#666666', '#999999', '#CCCCCC'  要根据图片本身的颜色值调整color吗？
+                margs = (textwm, '#999999', sz, 0.1 * a, 200, 30)  # 间距200，角度30
+                # rimg = addTxtMark(pic, margs)  # 间距，字体大小 采用相对数值
+                rimg = addTxtMark_relative(pic, margs)  # 间距，字体大小 采用相对数值
+            else:
+                loginfo = loginfo + "》添加图片水印完毕..."
+                logopic = lgZCY
+                if "logo" in self.request.arguments:  # 默认打在正中（01234 中心点 + 四个角落）
+                    logopic = self.get_argument('logo')
+                logging.info("添加图片水印，网络拉图中...")
+                image_bytes_ = urlopen(logopic, timeout=10).read()
+                logopic = io.BytesIO(image_bytes_)
+                rimg = lr.addinglogo(pic, logopic, loc, 0.1 * a, sz)  # loc 位置，a深度
+            loginfo = loginfo + "添加图片水印完毕..."
+            objname = str(uuid.uuid4()) + '.' + suffix  # 文本水印，必存png
+            savePath = "static/lg/" + objname
+            rimg.save(savePath)  # 处理完先保存到本地
+            loginfo = loginfo + 'savePath'
+            if up == 'oss':  # 上传oss
+                loginfo = loginfo + 'oss'
+                updata = {
+                    "bizCode": bizcode, "fileId": targetfid, "attachment": True,
+                    "files": open(savePath, "rb"),
+                }
+                rstj = up2oss_dst(updata)  # 上传至OSS，返回新连接
+                result['result'] = rstj['result']['downloadUrl']
+                result['fileId'] = rstj['result']['fileId']
+            else:  # 上传ly
+                loginfo = loginfo + 'ly'
+                objname = BUCK_PATH + objname
+                iurl = ly.upimg(savePath, BUCK_NAME, objname, imgext=suffix)  # 再上传到揽月
+                result['result'] = iurl
+            loginfo = loginfo + '>>> upload over.'
+            cls = 1
+            code = 200
+        except Exception as e:
+            logging.info(str(loginfo))
+            cls = 0
+            code = 400
+
+        waste_time = "耗时: %s sec." % (time.perf_counter() - t)
+        result['success'] = True if int(code) < 300 else False
+        result['code'] = code
+        result['massage'] = lgMSG[cls]
+        resp = json.dumps(result)
+        logging.info("请求响应:{}, 耗时:{}".format(str(resp), waste_time))
+        return resp
+
+def plus(string):
+    return string.zfill(8)  # 返回指定长度的字符串，原字符串右对齐，前面填充0。
+def mod(x, y):
+    return x % y
+def toasc(strr):
+    return int(strr, 2)
+
+class Infopic:
+    def __init__(self):
+        self.readme = "这里是 信息隐写与提取 API, 最多写入20个汉字"
+        self.len = 512  # 最长信息
+        self.iw = "#"  # 缺省占位字
+
+    def hide_info(self, pic, info):  # out,
+        """隐藏str文本信息, 输出图片, 返回图片路径"""
+        im = Image.open(pic)
+        # 获取图片的宽和高
+        width, height = im.size[0], im.size[1]
+        count = 0
+        infob = info.encode('GBK')  # 编码后转成 bgk串，gbk下中英文都会被编码
+        key = ""
+        for i in range(len(infob)):
+            key = key + "" + plus(bin(infob[i]).replace('0b', ''))
+        mlen = len(key)
+        jj_len = (self.len - mlen) / 8
+        jnfo = "".join([self.iw for i in range(int(jj_len))])  # 十个中文
+        jnfob = jnfo.encode('GBK')
+        ikey = ""
+        for i in range(len(jnfob)):
+            ikey = ikey + "" + plus(bin(jnfob[i]).replace('0b', ''))
+        key = key + ikey
+        print("元信息长度 {}, 填充长度 {}, 总长 {}".format(mlen, len(ikey), len(key)))  # 正好填充至512
+        keylen = len(key)
+        for h in range(height):
+            for w in range(width):
+                pixel = im.getpixel((w, h))
+                a = pixel[0]
+                b = pixel[1]
+                c = pixel[2]
+                if count == keylen:
+                    break
+                a = a - mod(a, 2) + int(key[count])
+                count += 1
+                if count == keylen:
+                    im.putpixel((w, h), (a, b, c))
+                    break
+                b = b - mod(b, 2) + int(key[count])
+                count += 1
+                if count == keylen:
+                    im.putpixel((w, h), (a, b, c))
+                    break
+                c = c - mod(c, 2) + int(key[count])
+                count += 1
+                if count == keylen:
+                    im.putpixel((w, h), (a, b, c))
+                    break
+                if count % 3 == 0:
+                    im.putpixel((w, h), (a, b, c))
+        return im
+
+    def get_info(self, pic):
+        b = ""
+        im = Image.open(pic)
+        lenth = self.len
+        width, height = im.size[0], im.size[1]
+        count = 0
+        for h in range(height):
+            for w in range(width):  # 获得(w,h)点像素的值
+                pixel = im.getpixel((w, h))  # 此处余3，依次从R、G、B三个颜色通道获得最低位的隐藏信息
+                if count % 3 == 0:
+                    count += 1
+                    b = b + str((mod(int(pixel[0]), 2)))
+                    if count == lenth:
+                        break
+                if count % 3 == 1:
+                    count += 1
+                    b = b + str((mod(int(pixel[1]), 2)))
+                    if count == lenth:
+                        break
+                if count % 3 == 2:
+                    count += 1
+                    b = b + str((mod(int(pixel[2]), 2)))
+                    if count == lenth:
+                        break
+            if count == lenth:
+                break
+        bts = bytes.fromhex(hex(int(b, 2))[2:])
+        try:
+            rst_ = bts.decode('GBK')
+            # rst_ = bts.decode('UTF-8')
+        except UnicodeDecodeError as ude:
+            print("解码失败，没有信息:", ude)
+            return True, "[没有信息]"
+        except Exception as e:
+            print(e)
+            return False, "[提取错误]"
+        else:
+            rst = rst_.replace(self.iw, "")
+            return True, rst
+
+# 信息隐写 【加密 / 提取】
+class MsgmarkerHandler(tornado.web.RequestHandler):
+    executor = ThreadPoolExecutor(30)
+
+    @tornado.web.asynchronous
+    @tornado.gen.coroutine
+    def get(self):
+        res = yield self.handle()
+        self.write(res)
+
+    @tornado.gen.coroutine
+    def post(self):
+        res = yield self.handle()
+        self.write(res)
+
+    @run_on_executor
+    def handle(self):
+        t = time.perf_counter()
+        jsbody = json.loads(self.request.body)
+        # print(jsbody)
+        method = jsbody['method']
+        sourcefid = jsbody['sourceFileId']
+        bizcode = jsbody['bizCode']
+        if 'imgUrl' in jsbody.keys():
+            downuri = jsbody['imgUrl']
+            bizcode = '1121'  # 如果是图片链接，则结果图指定一个存储 bizcode
+        else:
+            downuri = downUri4oss(bizcode, sourcefid)
+        print(downuri)
+        image_bytes = urlopen(downuri, timeout=10).read()
+        pic = io.BytesIO(image_bytes)
+        result = {}  # 返回参数
+        if method == 'set':
+            targetfid = jsbody['msgMarkerFileId']  # 加密结果图
+            textwm = jsbody['msgMarkerContent']  # 加密信息
+            up = jsbody['up'] if 'up' in jsbody.keys() else 'oss'  # 当前默认采用 oss
+            # if "up" in self.request.arguments or 'imgUrl' in jsbody.keys():
+            #     # up = str(self.get_argument('up'))
+            #     up = 'ly'
+
+            logging.info("msgMarker 接受参数，msg: {}".format(textwm))
+            suffix = 'png'
+            loginfo = ''
+            try:
+                rimg = bip.hide_info(pic, textwm)  # 写入信息 返回img对象
+                loginfo = loginfo + "添加图片水印完毕..."
+                objname = str(uuid.uuid4()) + '.' + suffix  # 文本水印，必存png
+
+                savePath = "static/blg/" + objname
+                rimg.save(savePath)  # 处理完先保存到本地
+                loginfo = loginfo + 'savePath'
+                if up == 'oss':  # 上传oss
+                    loginfo = loginfo + 'oss'
+                    updata = {
+                        "bizCode": bizcode, "fileId": targetfid, "attachment": True,
+                        "files": open(savePath, "rb"),
+                    }
+                    rstj = up2oss_dst(updata)  # 上传至OSS，返回新连接
+                    result['result'] = rstj['result']['downloadUrl']
+                    result['fileId'] = rstj['result']['fileId']
+                else:  # 上传ly
+                    loginfo = loginfo + 'ly'
+                    objname = BUCK_PATH + objname
+                    iurl = ly.upimg(savePath, BUCK_NAME, objname, imgext=suffix)  # 再上传到揽月
+                    result['result'] = iurl
+
+                loginfo = loginfo + '>>> upload over.'
+                cls = 1
+                code = 200
+            except Exception as e:
+                logging.info(str(loginfo))
+                cls = 0
+                code = 400
+            waste_time = "耗时: %s sec." % (time.perf_counter() - t)
+            result['success'] = True if int(code) < 300 else False
+            result['code'] = code
+            result['massage'] = lgMSG[cls]
+            resp = json.dumps(result)
+            logging.info("请求响应:{}, 耗时:{}".format(str(resp), waste_time))
+            return resp
+        elif method == 'get':
+            brst, bmsg = bip.get_info(pic)
+            waste_time = "耗时: %s sec." % (time.perf_counter() - t)
+            code = 207 if brst else 407
+            result['success'] = brst
+            result['code'] = code
+            result['massage'] = bmsg
+            resp = json.dumps(result)
+            logging.info("请求响应:{}, 耗时:{}".format(str(resp), waste_time))
+            return resp
+        else:
+            result['success'] = False
+            result['code'] = 406
+            result['massage'] = "请求方法不正确 [method == 'set' or 'get']"
+            resp = json.dumps(result)
+            return resp
+
+def getLanyue():
+    lanyue = LanYue(LY_ID, LY_ACC, LY_SEC)
+    # lanyue = LanYue("lanyue.prod.cai-inc.com", "OW52GX4XO0KLnCBe", "uTRaQmmeoj2yy7pt")
+    # lanyue = LanYue("lanyue.zcygov.cn", "OW52GX4XO0KLnCBe", "uTRaQmmeoj2yy7pt")
+    if not lanyue.bucketexists(BUCK_NAME):  # 判断 "np-watermark" 是否有，若没有则创建
+        lanyue.makebucket(BUCK_NAME)  # 若没有，则先创建一个桶"np-watermark"
+    return lanyue
+
+settings = {
+    "static_path": 'static',  # 静态文件路径   通过当前接口主目录下的 /static 来访问
+    "template_path": 'template',  # 配置html模板路径
+}
+
+application = tornado.web.Application([
+    (r"/", IndexHandler),  # 去水印  页面demo
+    (r"/rmlogo", RmlogoHandler),  # 页面去水印api
+    (r"/downfile", DownfileHandler),  # 提供页面下载链接
+
+    (r"/islogo", IslogoHandler),  # logo 分类
+    (r"/delogo", DelogoHandler),  # 当有水印时，去水印，上传oss系统
+    (r"/delogoapi", DelogoapiHandler),  # 直接去水印 返回新url
+    (r"/delogo2ly", Delogo2lyHandler),  # 去水印 上传揽月
+    (r"/fast-delogo", FastdelogoHandler),  # 追求极致性能，直接去水印
+
+    (r"/addlogo", AddlogoHandler),  # 加水印
+    (r"/fast-addlogo", FastaddlogoHandler),  # 面向业务的加水印
+
+    (r"/blindlogo", BlindlogoHandler),  # 加/取 图片 盲水印
+    (r"/blindmsg", MsgmarkerHandler),  # 加/取 文本 盲水印
+
+    ], debug=True,  # 必须加debug 才可以在前台更新cur-comp同名图片
+    static_path='./static',  # 配置静态文件路径, 由于要动态链，拼接圭臬前缀, 修改了htmls的action路径和本地连接
+    template_path='./template',  # 配置模板路径
+)
+if __name__ == "__main__":
+    if not os.path.exists(LOG_PATH):
+        os.makedirs(LOG_PATH)
+    logging = getLogger(logname=os.path.join(LOG_PATH, 'wm.log'))
+    lr = Logo_remover()  # 水印操作实例
+    bip = Infopic()  # 信息隐写
+    ly = getLanyue()  # 揽月实例
+    http_server = tornado.httpserver.HTTPServer(application)  # 创建应用
+    http_server.bind(LISTEN_PORT)  # 端口绑定
+    http_server.start(PROCESS_NUM)  # 开启的进程数
+    logging.info("ready...")
+    print(LISTEN_PORT, "ready...")
+    tornado.ioloop.IOLoop.instance().start()  # 启动web服务
+

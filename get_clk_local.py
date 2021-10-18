@@ -17,7 +17,6 @@ def get_pixlocal(imgp):
             b.append(y)
 
             print(x, y, img.item(y, x, 0), img.item(y, x, 1), img.item(y, x, 2))
-
             cv2.circle(img, (x, y), 1, (0, 0, 255), thickness=-1)
             cv2.putText(
                 img, xy, (x, y), cv2.FONT_HERSHEY_PLAIN,
@@ -136,19 +135,11 @@ def dist_logopix_jds(imgap, imgbp, plt, prb):
     Image.fromarray(bpatch).show()
 
 
-
-
 """
 找出jd水印的原生配方，根据配方来逆向计算：
-
-"""
-
-"""
 分析： 透明是绝对要给透明度的，如果设置alp全为0，那么logo成分为0，看不到logo，不行
 如果alp设置全为100， 那么将logo部分将全部取代原图像素，不合理
-
 问题：透明度区还需要分字体和背景，在logo背景上透明度是0（没有logo成分），在logo字体上透明度为对应值
-
 """
 from LogoRemoval import get_src_logo_img
 def get_logobypath(imgp):
@@ -164,11 +155,8 @@ def get_logobypath(imgp):
     # watermark = Image.open("opc/444.png")  # 水印路径，加在下侧
     # watermark = Image.open("opc/555.png")  # 水印路径，加在下侧
     watermark = Image.open("opc/666.png")  # 水印路径，加在下侧
-
     # watermark = Image.open("_rev_/sy/a_logo/logo_X.png")  # 水印路径，加在下侧
-
     # watermark = Image.open("opc/_374x54.png")  # 水印路径，加在下侧， 还是不行，核心区残留颜色了
-
     # image = Image.fromarray(img)
     if watermark.mode != 'RGBA':
         alpha = Image.new('L', watermark.size, 255)  # 创建A通道  L表示8位灰度图
@@ -192,9 +180,7 @@ def get_logobypath(imgp):
 
     # print("pmask 全部0, 不粘贴")
     # paste_mask = watermark.split()[3].point(lambda i: 0)  # 第四通道
-
     # 字体处为1， 其余位0
-
 
     # wr, wg, wb, wa = watermark.split()
     # iwatermark = Image.merge('RGBA', (wg, wb, wr, wa))  # paste之前，水印红蓝反色
@@ -227,7 +213,6 @@ def get_logobypath(imgp):
 """
 def get_initpix(vsrc, valp, vlogo):
     # valp = 0.0745 if valp > 0.0 else 0.0
-
     if valp == 1:
         return vlogo
     else:
@@ -490,6 +475,7 @@ if __name__ == '__main__':
     # contrast(imgp, yyo)
 
     pass
+
 """
 明显 jd 原生水印 像素有毛边而且窄一点，内层呈现某种固定颜色
 而 yy 手工水印 像素更宽
